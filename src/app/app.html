@@ -1,7 +1,27 @@
-<div class="flex flex-col h-[100dvh] bg-gemini-bg font-sans overflow-hidden">
+<div class="flex flex-col h-[100dvh] bg-gemini-bg font-sans overflow-hidden font-sans">
+  <!-- Menu Button (Top Left) -->
+  <button 
+    (click)="toggleSidebar()"
+    class="fixed top-4 left-4 z-50 w-10 h-10 flex items-center justify-center rounded-xl bg-gemini-surface/50 backdrop-blur-md border border-gemini-border text-zinc-300 hover:text-white hover:bg-white/10 transition-all shadow-xl"
+  >
+    <mat-icon>{{ isSidebarOpen() ? 'close' : 'menu' }}</mat-icon>
+  </button>
+
+  <!-- Sidebar -->
+  @if (isSidebarOpen()) {
+    <app-sidebar
+      [sessions]="gemini.chatSessions()"
+      [activeSessionId]="gemini.getActiveSessionId()"
+      (closeSidebar)="isSidebarOpen.set(false)"
+      (newChat)="createNewChat()"
+      (selectSession)="loadSession($event)"
+      (deleteSession)="deleteSession($event)"
+    ></app-sidebar>
+  }
+
   <!-- Header -->
   @if (gemini.chatHistory().length > 0) {
-    <header class="flex items-center justify-between px-4 py-3 border-b border-gemini-border shrink-0 bg-gemini-bg z-20">
+    <header class="flex items-center justify-between px-4 py-3 pl-16 border-b border-gemini-border shrink-0 bg-gemini-bg z-20">
       <div class="flex items-center gap-2">
         <span class="text-sm font-medium text-zinc-300">Gemini AI Studio</span>
       </div>
@@ -13,8 +33,7 @@
     @if (gemini.chatHistory().length === 0) {
       <div class="flex-1 flex flex-col items-center justify-center pb-24 sm:pb-32">
         <app-home 
-          class="flex flex-col items-center justify-center"
-          (openConfig)="isApiKeyModalOpen.set(true)">
+          class="flex flex-col items-center justify-center">
         </app-home>
       </div>
     } @else {

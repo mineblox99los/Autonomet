@@ -1,10 +1,17 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, computed } from '@angular/core';
 import { GoogleGenAI } from '@google/genai';
 
 export interface Message {
   role: 'user' | 'model';
   parts: string;
   responseTime?: number;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: number;
 }
 
 @Injectable({
@@ -23,6 +30,69 @@ export class GeminiService {
       systemInstruction: "Você é o Gemini, um assistente de IA prestativo. Responda de forma concisa e eficaz usando Markdown.",
     }
   });
+
+  private sessions = signal<ChatSession[]>(this.loadSessionsFromStorage());
+  private activeSessionId = signal<string | null>(null);
+
+  constructor() {
+    // If sessions exist but none is active, we could technically load the last one.
+    // But we'll keep the current behavior of starting fresh if history signal is empty.
+  }
+
+  private loadSessionsFromStorage(): ChatSession[] {
+    const saved = localStorage.getItem('gemini_chat_sessions');
+    return saved ? JSON.parse(saved) : [];
+  }
+
+  private saveSessionsToStorage() {
+    localStorage.setItem('gemini_chat_sessions', JSON.stringify(this.sessions()));
+  }
+
+  chatSessions = computed(() => this.sessions().sort((a, b) => b.createdAt - a.createdAt));
+
+  getActiveSessionId() {
+    return this.activeSessionId();
+  }
+
+  createNewSession() {
+    this.chatHistory.set([]);
+    this.activeSessionId.set(null);
+    // Reset subject
+    this.chatSubject = this.ai.chats.create({
+      model: "gemini-3-flash-preview",
+      config: {
+        systemInstruction: "Você é o Gemini, um assistente de IA prestativo. Responda de forma concisa e eficaz usando Markdown.",
+      }
+    });
+  }
+
+  loadSession(id: string) {
+    const session = this.sessions().find(s => s.id === id);
+    if (session) {
+      this.chatHistory.set(session.messages);
+      this.activeSessionId.set(session.id);
+      
+      // Re-initialize subject with history
+      this.chatSubject = this.ai.chats.create({
+        model: "gemini-3-flash-preview",
+        config: {
+          systemInstruction: "Você é o Gemini, um assistente de IA prestativo. Responda de forma concisa e eficaz usando Markdown.",
+        },
+        history: session.messages.map(m => ({
+          role: m.role === 'user' ? 'user' : 'model',
+          parts: [{ text: m.parts }]
+        }))
+      });
+    }
+  }
+
+  deleteSession(id: string) {
+    this.sessions.update(prev => prev.filter(s => s.id !== id));
+    this.saveSessionsToStorage();
+    if (this.activeSessionId() === id) {
+      this.createNewSession();
+    }
+  }
 
   setApiKey(key: string) {
     localStorage.setItem('user_gemini_api_key', key);
@@ -76,6 +146,10 @@ export class GeminiService {
         responseTime: durationSeconds
       };
       this.chatHistory.update(history => [...history, modelMessage]);
+
+      // Handle session persistence
+      this.persistActiveChat();
+
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage: Message = { 
@@ -90,5 +164,28 @@ export class GeminiService {
         this.timerInterval = undefined;
       }
     }
+  }
+
+  private persistActiveChat() {
+    const history = this.chatHistory();
+    if (history.length === 0) return;
+
+    const currentId = this.activeSessionId();
+    const title = history[0].parts.substring(0, 30) + (history[0].parts.length > 30 ? '...' : '');
+
+    if (currentId) {
+      this.sessions.update(prev => prev.map(s => s.id === currentId ? { ...s, messages: history, title } : s));
+    } else {
+      const newId = crypto.randomUUID();
+      const newSession: ChatSession = {
+        id: newId,
+        title,
+        messages: history,
+        createdAt: Date.now()
+      };
+      this.sessions.update(prev => [newSession, ...prev]);
+      this.activeSessionId.set(newId);
+    }
+    this.saveSessionsToStorage();
   }
 }
