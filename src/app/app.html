@@ -1,0 +1,40 @@
+<div class="flex flex-col h-[100dvh] bg-gemini-bg font-sans overflow-hidden">
+  <!-- Header -->
+  @if (gemini.chatHistory().length > 0) {
+    <header class="flex items-center justify-between px-4 py-3 border-b border-gemini-border shrink-0 bg-gemini-bg z-20">
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-medium text-zinc-300">Gemini AI Studio</span>
+      </div>
+    </header>
+  }
+
+  <main class="flex-1 flex flex-col w-full max-w-[900px] mx-auto relative overflow-hidden">
+    
+    @if (gemini.chatHistory().length === 0) {
+      <div class="flex-1 flex flex-col items-center justify-center pb-24 sm:pb-32">
+        <app-home class="flex flex-col items-center justify-center"></app-home>
+      </div>
+    } @else {
+      <app-chat-history 
+        class="flex-1 min-h-0"
+        [history]="gemini.chatHistory()" 
+        [isLoading]="gemini.isLoading()"
+        [elapsedTime]="gemini.elapsedTime()">
+      </app-chat-history>
+    }
+
+    <!-- Bottom fixed input area -->
+    <div class="absolute bottom-0 left-0 right-0 px-4 pb-6 pt-16 bg-gradient-to-t from-gemini-bg via-gemini-bg/95 to-transparent z-10 pointer-events-none">
+      <div class="max-w-3xl mx-auto w-full pointer-events-auto">
+        <app-chat-input 
+          [isLoading]="gemini.isLoading()" 
+          (send)="sendMessage($event)">
+        </app-chat-input>
+        <div class="text-[10px] text-zinc-500 text-center mt-3 px-4">
+          O Gemini pode apresentar informações imprecisas, inclusive sobre pessoas, por isso verifique as respostas. 
+          <a href="#" class="underline">Sua privacidade e os apps do Gemini</a>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
