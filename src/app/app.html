@@ -12,7 +12,10 @@
     
     @if (gemini.chatHistory().length === 0) {
       <div class="flex-1 flex flex-col items-center justify-center pb-24 sm:pb-32">
-        <app-home class="flex flex-col items-center justify-center"></app-home>
+        <app-home 
+          class="flex flex-col items-center justify-center"
+          (openConfig)="isApiKeyModalOpen.set(true)">
+        </app-home>
       </div>
     } @else {
       <app-chat-history 
@@ -28,6 +31,9 @@
       <div class="max-w-3xl mx-auto w-full pointer-events-auto">
         <app-chat-input 
           [isLoading]="gemini.isLoading()" 
+          [hasCustomKey]="gemini.hasCustomKey()"
+          [currentKey]="gemini.getApiKey()"
+          (openApiKeyModal)="isApiKeyModalOpen.set(true)"
           (send)="sendMessage($event)">
         </app-chat-input>
         <div class="text-[10px] text-zinc-500 text-center mt-3 px-4">
@@ -37,4 +43,14 @@
       </div>
     </div>
   </main>
+
+  <!-- Modals -->
+  @if (isApiKeyModalOpen()) {
+    <app-api-key-modal
+      [currentKey]="gemini.getApiKey()"
+      (saveKey)="saveApiKey($event)"
+      (clearKey)="clearApiKey()"
+      (closeModal)="isApiKeyModalOpen.set(false)"
+    ></app-api-key-modal>
+  }
 </div>

@@ -1,8 +1,10 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, output } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-home',
   standalone: true,
+  imports: [MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col items-center justify-center animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -15,8 +17,18 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
       <h1 class="text-3xl sm:text-4xl font-medium text-center leading-tight tracking-tight max-w-[320px] sm:max-w-[600px] mb-4 text-white/95">
         Crie suas ideias com o Gemini
       </h1>
-      <p class="text-zinc-400 text-sm sm:text-base mb-12 text-center max-w-[280px] sm:max-w-none">Onde a sua criatividade encontra a inteligência artificial</p>
+      <p class="text-zinc-400 text-sm sm:text-base mb-10 text-center max-w-[280px] sm:max-w-none">Onde a sua criatividade encontra a inteligência artificial</p>
+      
+      <button 
+        (click)="openConfig.emit()"
+        class="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-zinc-300 hover:bg-white/10 hover:border-white/20 transition-all group active:scale-95"
+      >
+        <mat-icon class="scale-90 text-blue-400 group-hover:rotate-12 transition-transform">vpn_key</mat-icon>
+        <span class="text-sm font-medium tracking-wide">Configurar chave de API</span>
+      </button>
     </div>
   `
 })
-export class Home {}
+export class Home {
+  openConfig = output<void>();
+}

@@ -11,13 +11,39 @@ export interface Message {
   providedIn: 'root'
 })
 export class GeminiService {
-  private ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+  private userApiKey = signal<string | null>(localStorage.getItem('user_gemini_api_key'));
+  
+  private ai = new GoogleGenAI({ 
+    apiKey: this.userApiKey() || GEMINI_API_KEY 
+  });
+  
   private chatSubject = this.ai.chats.create({
     model: "gemini-3-flash-preview",
     config: {
       systemInstruction: "Você é o Gemini, um assistente de IA prestativo. Responda de forma concisa e eficaz usando Markdown.",
     }
   });
+
+  setApiKey(key: string) {
+    localStorage.setItem('user_gemini_api_key', key);
+    this.userApiKey.set(key);
+    // Re-initialize with new key
+    this.ai = new GoogleGenAI({ apiKey: key });
+    this.chatSubject = this.ai.chats.create({
+      model: "gemini-3-flash-preview",
+      config: {
+        systemInstruction: "Você é o Gemini, um assistente de IA prestativo. Responda de forma concisa e eficaz usando Markdown.",
+      }
+    });
+  }
+
+  getApiKey() {
+    return this.userApiKey();
+  }
+
+  hasCustomKey() {
+    return !!this.userApiKey();
+  }
 
   chatHistory = signal<Message[]>([]);
   isLoading = signal(false);
