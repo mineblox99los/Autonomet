@@ -22,7 +22,7 @@ export class GeminiService {
   chatHistory = signal<Message[]>([]);
   isLoading = signal(false);
   elapsedTime = signal(0);
-  private timerInterval?: any;
+  private timerInterval?: ReturnType<typeof setInterval>;
 
   async sendMessage(prompt: string) {
     if (!prompt.trim() || this.isLoading()) return;

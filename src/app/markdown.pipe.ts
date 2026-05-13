@@ -21,6 +21,7 @@ export class MarkdownPipe implements PipeTransform {
       },
       breaks: true,
       gfm: true
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
   }
 
