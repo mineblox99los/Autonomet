@@ -1,11 +1,20 @@
 <div class="flex flex-col h-[100dvh] bg-gemini-bg font-sans overflow-hidden font-sans">
-  <!-- Menu Button (Top Left) -->
-  <button 
-    (click)="toggleSidebar()"
-    class="fixed top-4 left-4 z-50 w-10 h-10 flex items-center justify-center rounded-xl bg-gemini-surface/50 backdrop-blur-md border border-gemini-border text-zinc-300 hover:text-white hover:bg-white/10 transition-all shadow-xl"
-  >
-    <mat-icon>{{ isSidebarOpen() ? 'close' : 'menu' }}</mat-icon>
-  </button>
+  <!-- Header -->
+  <header class="flex items-center justify-between px-4 py-2 border-b border-gemini-border shrink-0 bg-gemini-bg z-20">
+    <div class="flex items-center gap-3">
+      <button 
+        (click)="toggleSidebar()"
+        class="w-10 h-10 flex items-center justify-center rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-all"
+        id="sidebar-toggle-btn"
+      >
+        <mat-icon>{{ isSidebarOpen() ? 'close' : 'menu' }}</mat-icon>
+      </button>
+      
+      @if (gemini.chatHistory().length > 0) {
+        <span class="text-sm font-medium text-zinc-300 animate-in fade-in duration-300">Superintelligence</span>
+      }
+    </div>
+  </header>
 
   <!-- Sidebar -->
   @if (isSidebarOpen()) {
@@ -17,15 +26,6 @@
       (selectSession)="loadSession($event)"
       (deleteSession)="deleteSession($event)"
     ></app-sidebar>
-  }
-
-  <!-- Header -->
-  @if (gemini.chatHistory().length > 0) {
-    <header class="flex items-center justify-between px-4 py-3 pl-16 border-b border-gemini-border shrink-0 bg-gemini-bg z-20">
-      <div class="flex items-center gap-2">
-        <span class="text-sm font-medium text-zinc-300">Gemini AI Studio</span>
-      </div>
-    </header>
   }
 
   <main class="flex-1 flex flex-col w-full max-w-[900px] mx-auto relative overflow-hidden">
@@ -41,7 +41,8 @@
         class="flex-1 min-h-0"
         [history]="gemini.chatHistory()" 
         [isLoading]="gemini.isLoading()"
-        [elapsedTime]="gemini.elapsedTime()">
+        [elapsedTime]="gemini.elapsedTime()"
+        [status]="gemini.workingStatus()">
       </app-chat-history>
     }
 
@@ -56,8 +57,8 @@
           (send)="sendMessage($event)">
         </app-chat-input>
         <div class="text-[10px] text-zinc-500 text-center mt-3 px-4">
-          O Gemini pode apresentar informações imprecisas, inclusive sobre pessoas, por isso verifique as respostas. 
-          <a href="#" class="underline">Sua privacidade e os apps do Gemini</a>
+          A IA pode apresentar informações imprecisas, inclusive sobre pessoas, por isso verifique as respostas. 
+          <a href="#" class="underline">Privacidade e Termos</a>
         </div>
       </div>
     </div>

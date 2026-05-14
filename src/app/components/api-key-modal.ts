@@ -30,13 +30,13 @@ import { MatIconModule } from '@angular/material/icon';
         <!-- Body -->
         <div class="p-6">
           <p class="text-sm text-zinc-300 mb-6 leading-relaxed">
-            Sua chave é armazenada localmente no seu navegador. Você pode obter uma chave gratuita no 
-            <a href="https://aistudio.google.com/api-keys" target="_blank" class="text-blue-400 hover:underline">Google AI Studio</a>.
+            Sua chave é armazenada localmente no seu navegador. Você pode obter uma chave gratuita na 
+            <a href="https://aistudio.google.com/api-keys" target="_blank" class="text-blue-400 hover:underline">Plataforma de Desenvolvedor</a>.
           </p>
 
           <div class="space-y-4">
             <div>
-              <label for="gemini-api-key" class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Chave de API Gemini</label>
+              <label for="gemini-api-key" class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Chave de API</label>
               <div class="relative">
                 <input 
                   id="gemini-api-key"

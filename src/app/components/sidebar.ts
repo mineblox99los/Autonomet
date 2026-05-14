@@ -2,11 +2,12 @@ import { Component, ChangeDetectionStrategy, output, input } from '@angular/core
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { ChatSession } from '../services/gemini';
+import { PromotionCard } from './promotion-card';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, PromotionCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <!-- Overlay for mobile -->
@@ -72,6 +73,15 @@ import { ChatSession } from '../services/gemini';
         }
       </div>
 
+      <!-- Advertisement / Promotions -->
+      <app-promotion-card 
+        title="Ganhe Cashback" 
+        description="Receba parte do seu dinheiro de volta em compras online via IA."
+        icon="payments"
+        buttonText="Ver Promoção"
+        adId="cashback-001"
+      ></app-promotion-card>
+
       <!-- Bottom Profile/Status (Optional) -->
       <div class="p-4 border-t border-gemini-border mt-auto">
         <div class="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
@@ -80,7 +90,7 @@ import { ChatSession } from '../services/gemini';
           </div>
           <div class="flex-1 min-w-0 text-left">
             <div class="text-[12px] font-medium text-zinc-200 truncate">Usuário</div>
-            <div class="text-[10px] text-zinc-500 truncate">Gemini User</div>
+            <div class="text-[10px] text-zinc-500 truncate">Conta Pessoal</div>
           </div>
         </div>
       </div>

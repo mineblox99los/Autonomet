@@ -15,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
       </div>
 
       <h1 class="text-3xl sm:text-4xl font-medium text-center leading-tight tracking-tight max-w-[320px] sm:max-w-[600px] mb-4 text-white/95">
-        Crie suas ideias com o Gemini
+        Crie suas ideias com a Superintelligence
       </h1>
       <p class="text-zinc-400 text-sm sm:text-base mb-10 text-center max-w-[280px] sm:max-w-none">Onde a sua criatividade encontra a inteligência artificial</p>
     </div>

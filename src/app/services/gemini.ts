@@ -24,10 +24,34 @@ export class GeminiService {
     apiKey: this.userApiKey() || GEMINI_API_KEY 
   });
   
+  private readonly SYSTEM_INSTRUCTION = `Você é a Superintelligence, uma assistente de IA prestativa. Responda de forma concisa e eficaz usando Markdown.
+  
+Se você for solicitado a criar, modificar ou mostrar código de arquivos, você DEVE usar uma estrutura especial chamada "Action History".
+Isso ajuda o usuário a ver as mudanças de forma organizada.
+
+Para usar o Action History, envolva a lista de arquivos entre as tags <action_history> e cada arquivo entre as tags <file path="caminho/do/arquivo.ts">.
+
+Exemplo de uso:
+"Claro, aqui estão as mudanças para o seu app:
+
+<action_history>
+<file path="src/app/main.ts">
+import { bootstrap } from '@angular/core';
+// ... código ...
+</file>
+<file path="src/styles.css">
+body { background: #000; }
+</file>
+</action_history>
+
+Espero que isso ajude!"
+
+Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas o conteúdo puro do arquivo.`;
+
   private chatSubject = this.ai.chats.create({
     model: "gemini-3-flash-preview",
     config: {
-      systemInstruction: "Você é o Gemini, um assistente de IA prestativo. Responda de forma concisa e eficaz usando Markdown.",
+      systemInstruction: this.SYSTEM_INSTRUCTION,
     }
   });
 
@@ -61,7 +85,7 @@ export class GeminiService {
     this.chatSubject = this.ai.chats.create({
       model: "gemini-3-flash-preview",
       config: {
-        systemInstruction: "Você é o Gemini, um assistente de IA prestativo. Responda de forma concisa e eficaz usando Markdown.",
+        systemInstruction: this.SYSTEM_INSTRUCTION,
       }
     });
   }
@@ -76,7 +100,7 @@ export class GeminiService {
       this.chatSubject = this.ai.chats.create({
         model: "gemini-3-flash-preview",
         config: {
-          systemInstruction: "Você é o Gemini, um assistente de IA prestativo. Responda de forma concisa e eficaz usando Markdown.",
+          systemInstruction: this.SYSTEM_INSTRUCTION,
         },
         history: session.messages.map(m => ({
           role: m.role === 'user' ? 'user' : 'model',
@@ -102,7 +126,7 @@ export class GeminiService {
     this.chatSubject = this.ai.chats.create({
       model: "gemini-3-flash-preview",
       config: {
-        systemInstruction: "Você é o Gemini, um assistente de IA prestativo. Responda de forma concisa e eficaz usando Markdown.",
+        systemInstruction: this.SYSTEM_INSTRUCTION,
       }
     });
   }
@@ -118,6 +142,7 @@ export class GeminiService {
   chatHistory = signal<Message[]>([]);
   isLoading = signal(false);
   elapsedTime = signal(0);
+  workingStatus = signal<string>('Working');
   private timerInterval?: ReturnType<typeof setInterval>;
 
   async sendMessage(prompt: string) {
@@ -126,10 +151,27 @@ export class GeminiService {
     const trimmedPrompt = prompt.trim();
     this.isLoading.set(true);
     this.elapsedTime.set(0);
+    this.workingStatus.set('Working');
     const startTime = performance.now();
 
+    const statusUpdates = [
+      'Analyzing request...',
+      'Planning response...',
+      'Drafting content...',
+      'Refining answer...',
+      'Finalizing...'
+    ];
+    let statusIndex = 0;
+
     this.timerInterval = setInterval(() => {
-      this.elapsedTime.set(parseFloat(((performance.now() - startTime) / 1000).toFixed(1)));
+      const elapsed = parseFloat(((performance.now() - startTime) / 1000).toFixed(1));
+      this.elapsedTime.set(elapsed);
+      
+      // Update status every 3 seconds
+      if (Math.floor(elapsed) % 3 === 0 && statusIndex < statusUpdates.length - 1) {
+        statusIndex = Math.min(statusUpdates.length - 1, Math.floor(elapsed / 3));
+        this.workingStatus.set(statusUpdates[statusIndex]);
+      }
     }, 100);
     
     const userMessage: Message = { role: 'user', parts: trimmedPrompt };
@@ -154,7 +196,7 @@ export class GeminiService {
       console.error('Error sending message:', error);
       const errorMessage: Message = { 
         role: 'model', 
-        parts: 'Erro ao se comunicar com o Gemini. Por favor, verifique sua chave de API.' 
+        parts: 'Erro ao se comunicar com a IA. Por favor, verifique sua chave de API.' 
       };
       this.chatHistory.update(history => [...history, errorMessage]);
     } finally {
