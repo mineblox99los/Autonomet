@@ -27,14 +27,14 @@ import { ReactiveFormsModule, FormControl } from '@angular/forms';
             <div class="relative">
               <button 
                 (click)="toggleMicDropdown($event)"
-                class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:bg-white/5 transition-colors"
+                class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:bg-white/5 active:bg-blue-500/30 transition-all"
                 id="mic-button"
               >
                 <mat-icon class="scale-90">mic_none</mat-icon>
               </button>
               
               @if (isMicDropdownOpen()) {
-                <div class="absolute bottom-full left-0 mb-3 bg-zinc-800 text-zinc-200 text-[12px] px-3 py-1.5 rounded-lg border border-white/10 shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-200 z-50">
+                <div class="absolute bottom-full left-0 mb-3 bg-gemini-surface text-zinc-300 text-[12px] px-3 py-1.5 rounded-lg border border-gemini-border shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-200 z-50">
                   Em desenvolvimento
                 </div>
               }
@@ -42,7 +42,7 @@ import { ReactiveFormsModule, FormControl } from '@angular/forms';
 
             <button 
               (click)="toggleDropdown($event)"
-              class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:bg-white/5 transition-colors"
+              class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:bg-white/5 active:bg-blue-500/30 transition-all"
             >
               <mat-icon class="scale-90">add_circle_outline</mat-icon>
             </button>
@@ -51,18 +51,15 @@ import { ReactiveFormsModule, FormControl } from '@angular/forms';
               <div class="absolute bottom-full left-0 mb-3 w-56 bg-gemini-surface border border-gemini-border rounded-xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-200">
                 <div class="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-3 px-1">Configurações de API</div>
                 
-                <div class="bg-black/40 rounded-lg p-2.5 flex items-center gap-3 mb-3 border border-white/5">
-                  <mat-icon [class.text-emerald-400]="hasCustomKey()" [class.text-zinc-500]="!hasCustomKey()" class="scale-75">
-                    {{ hasCustomKey() ? 'vpn_key' : 'key_off' }}
-                  </mat-icon>
-                  <code class="text-[11px] text-zinc-400 truncate">
+                <div class="bg-black/20 rounded-lg px-3 py-2.5 mb-3 border border-white/5">
+                  <code class="text-[11px] text-zinc-400 truncate leading-none block">
                     {{ maskedKey() }}
                   </code>
                 </div>
 
                 <button 
                   (click)="openApiKeyModal.emit()"
-                  class="w-full text-left text-[13px] px-2 py-1.5 rounded-lg text-blue-400 hover:bg-blue-400/5 transition-colors font-medium"
+                  class="w-full text-left text-[13px] px-2 py-1.5 rounded-lg text-blue-400 hover:bg-blue-400/5 active:bg-blue-400/10 transition-colors font-medium"
                 >
                   Configurar Chave de API
                 </button>
@@ -73,7 +70,7 @@ import { ReactiveFormsModule, FormControl } from '@angular/forms';
           <button 
             (click)="submit()"
             [disabled]="!promptControl.value?.trim() || isLoading()"
-            class="w-8 h-8 rounded-full bg-zinc-700 text-zinc-300 flex items-center justify-center hover:bg-zinc-600 transition-all disabled:opacity-20 disabled:grayscale"
+            class="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 active:bg-blue-500/50 transition-all disabled:opacity-20 disabled:grayscale"
           >
             <mat-icon class="scale-90">arrow_upward</mat-icon>
           </button>

@@ -14,11 +14,9 @@ import { ActionHistory } from './action-history';
   template: `
     <div class="flex flex-col gap-2 w-full max-w-full group">
       @if (message().role === 'user') {
-        <div class="flex justify-end">
-          <div class="max-w-[90%] sm:max-w-[85%] px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-gemini-surface border border-gemini-border text-white shadow-sm">
-            <div class="prose prose-invert prose-sm max-w-none leading-relaxed text-[14px] sm:text-[15px]" 
-                 [innerHTML]="message().parts | markdown">
-            </div>
+        <div class="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-gemini-surface/50 text-white border border-gemini-border/50">
+          <div class="prose prose-invert prose-sm max-w-none leading-relaxed text-[14px] sm:text-[15px]" 
+               [innerHTML]="message().parts | markdown">
           </div>
         </div>
       } @else {
@@ -30,12 +28,12 @@ import { ActionHistory } from './action-history';
             <span>{{ message().responseTime ? 'Ran for ' + message().responseTime + 's' : 'Instant response' }}</span>
           </div>
           
-          <div class="flex gap-4 items-start w-full min-w-0">
-            <div class="flex-1 bg-[#1f1f1f] border border-zinc-800 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 overflow-hidden min-w-0">
-              
-              <!-- Action History (if any) -->
-              <app-action-history [messageText]="message().parts" [sanitizer]="sanitizer"></app-action-history>
+          <div class="flex flex-col gap-1.5 w-full min-w-0">
+            <!-- Action History -->
+            <app-action-history [messageText]="message().parts" [sanitizer]="sanitizer"></app-action-history>
 
+            <div class="flex-1 bg-gemini-surface border border-gemini-border rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 overflow-hidden min-w-0">
+              
               <div class="prose prose-invert prose-sm max-w-none leading-relaxed text-[14px] sm:text-[15px] markdown-content overflow-x-auto" 
                    [innerHTML]="cleanParts() | markdown">
               </div>

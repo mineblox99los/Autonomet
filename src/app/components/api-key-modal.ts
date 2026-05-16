@@ -13,17 +13,12 @@ import { MatIconModule } from '@angular/material/icon';
       <div class="bg-gemini-surface border border-gemini-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-8 duration-500">
         <!-- Header -->
         <div class="px-6 py-5 border-b border-gemini-border flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-              <mat-icon class="text-blue-400">vpn_key</mat-icon>
-            </div>
-            <div>
-              <h2 class="text-lg font-semibold text-white">Configurar Chave de API</h2>
-              <p class="text-xs text-zinc-400">Personalize sua experiência com sua própria chave</p>
-            </div>
+          <div>
+            <h2 class="text-lg font-semibold text-white">Configurar Chave de API</h2>
+            <p class="text-xs text-zinc-400">Personalize sua experiência com sua própria chave</p>
           </div>
-          <button (click)="closeModal.emit()" class="text-zinc-500 hover:text-white transition-colors">
-            <mat-icon>close</mat-icon>
+          <button (click)="closeModal.emit()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-zinc-500 hover:text-white transition-all active:scale-95">
+            <mat-icon class="!text-[20px]">close</mat-icon>
           </button>
         </div>
 
@@ -48,9 +43,11 @@ import { MatIconModule } from '@angular/material/icon';
                 <button 
                   (click)="showKey.set(!showKey())"
                   type="button"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                  class="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-zinc-500 hover:text-zinc-300 transition-all active:scale-90"
                 >
-                  <mat-icon class="scale-75">{{ showKey() ? 'visibility_off' : 'visibility' }}</mat-icon>
+                  <mat-icon class="!text-[20px] !w-5 !h-5 flex items-center justify-center leading-none">
+                    {{ showKey() ? 'visibility_off' : 'visibility' }}
+                  </mat-icon>
                 </button>
               </div>
             </div>

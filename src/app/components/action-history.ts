@@ -8,6 +8,7 @@ interface FileAction {
   path: string;
   content: string;
   highlightedContent: string;
+  isComplete: boolean;
 }
 
 @Component({
@@ -17,36 +18,52 @@ interface FileAction {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (actions().length > 0) {
-      <div class="my-4 bg-[#1f1f1f] border border-zinc-800 rounded-xl overflow-hidden shadow-xl">
-        <div class="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-800">
-          <span class="text-[11px] font-semibold text-zinc-300 uppercase tracking-widest">Action history</span>
+      <div class="bg-gemini-surface border border-gemini-border rounded-xl overflow-hidden scale-in">
+        <div class="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-white/5">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-blue-400 scale-[0.6] animate-pulse">history</mat-icon>
+            <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Action History</span>
+          </div>
         </div>
         
-        <div class="p-4 sm:p-5 flex flex-col gap-4">
-          <p class="text-[13px] text-zinc-400">Here are key actions taken for the app:</p>
-          
-          <div class="flex flex-col gap-2">
+        <div class="p-3 flex flex-col gap-3">
+          <div class="flex flex-col gap-1.5 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
             @for (action of actions(); track action.path) {
               <div class="flex flex-col gap-2">
                 <button 
                   (click)="toggleFile(action.path)"
-                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-800/40 w-full text-left transition-colors group"
-                  [class.bg-[#2a2a2a]]="selectedFile() === action.path"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 active:bg-blue-500/20 active:ring-1 active:ring-blue-500/30 w-full text-left transition-all group relative overflow-hidden"
+                  [class.bg-white/10]="selectedFile() === action.path"
                 >
-                  <mat-icon class="text-zinc-500 scale-[0.65] group-hover:text-zinc-300">edit</mat-icon>
-                  <span class="text-[13px] font-mono text-zinc-300 flex-1 truncate opacity-90 group-hover:opacity-100 font-medium">{{ action.path }}</span>
-                  <div class="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/10 shrink-0">
-                    <mat-icon class="text-emerald-500 scale-[0.6]">check</mat-icon>
+                  <!-- Progress animation background for incomplete files -->
+                  @if (!action.isComplete) {
+                    <div class="absolute inset-0 bg-blue-500/5 animate-pulse"></div>
+                  }
+
+                  <mat-icon [class.text-blue-400]="!action.isComplete" [class.text-zinc-500]="action.isComplete" class="scale-[0.65] group-hover:text-zinc-300">
+                    {{ action.isComplete ? 'edit' : 'sync' }}
+                  </mat-icon>
+                  
+                  <span class="text-[13px] font-mono text-zinc-400 flex-1 truncate opacity-90 group-hover:opacity-100 font-medium z-10">{{ action.path }}</span>
+                  
+                  <div class="flex items-center justify-center w-5 h-5 rounded-full shrink-0 z-10" 
+                       [class.bg-emerald-500/10]="action.isComplete"
+                       [class.bg-blue-500/10]="!action.isComplete">
+                    @if (action.isComplete) {
+                      <mat-icon class="text-emerald-500 !text-[12px] !w-3 !h-3 flex items-center justify-center animate-in zoom-in duration-300">check</mat-icon>
+                    } @else {
+                      <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                    }
                   </div>
                 </button>
                 
                 @if (selectedFile() === action.path) {
                   <div class="animate-in fade-in zoom-in-95 duration-150">
-                    <div class="relative bg-[#2a2a2a] rounded-xl border border-zinc-800/50 shadow-inner">
-                      <pre class="m-0 p-4 text-[13px] overflow-x-auto leading-relaxed"><code [innerHTML]="action.highlightedContent"></code></pre>
+                    <div class="relative bg-black/20 rounded-xl border border-white/5 shadow-inner">
+                      <pre class="m-0 p-4 text-[12px] overflow-x-auto leading-relaxed"><code [innerHTML]="action.highlightedContent"></code></pre>
                       <button 
                         (click)="copyCode(action.content)"
-                        class="absolute top-3 right-3 p-2 rounded-lg bg-zinc-800/60 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all border border-zinc-700/30 z-10"
+                        class="absolute top-3 right-3 p-2 rounded-lg bg-zinc-800/60 hover:bg-zinc-800 active:bg-blue-500/40 text-zinc-400 hover:text-white transition-all border border-zinc-700/30 z-10"
                         title="Copy code"
                       >
                         <mat-icon class="scale-75">content_copy</mat-icon>
@@ -64,6 +81,25 @@ interface FileAction {
   styles: [`
     :host { display: block; }
     pre code { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+    .scale-in { animation: scaleIn 0.3s ease-out; }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
   `]
 })
 export class ActionHistory {
@@ -76,22 +112,56 @@ export class ActionHistory {
     const text = this.messageText();
     const actions: FileAction[] = [];
     
-    const historyRegex = /<action_history>([\s\S]*?)<\/action_history>/g;
-    const fileRegex = /<file path="([^"]+)">([\s\S]*?)<\/file>/g;
+    // Improved regex to handle streaming content
+    // We look for everything from the first <action_history> tag
+    const historyIndex = text.indexOf('<action_history>');
+    if (historyIndex === -1) return [];
+
+    let historyContent = text.substring(historyIndex + '<action_history>'.length);
+    const historyEndIndex = historyContent.indexOf('</action_history>');
+    if (historyEndIndex !== -1) {
+      historyContent = historyContent.substring(0, historyEndIndex);
+    }
+
+    // Match all <file path="..."> tags
+    const fileTagRegex = /<file path="([^"]+)">/g;
+    let fileMatch;
+    const matches: {path: string, startIndex: number}[] = [];
     
-    let historyMatch;
-    while ((historyMatch = historyRegex.exec(text)) !== null) {
-      const historyContent = historyMatch[1];
-      let fileMatch;
-      while ((fileMatch = fileRegex.exec(historyContent)) !== null) {
-        const path = fileMatch[1];
-        const content = fileMatch[2].trim();
-        actions.push({
-          path,
-          content,
-          highlightedContent: hljs.highlightAuto(content).value
-        });
+    while ((fileMatch = fileTagRegex.exec(historyContent)) !== null) {
+      matches.push({
+        path: fileMatch[1],
+        startIndex: fileMatch.index + fileMatch[0].length
+      });
+    }
+
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i];
+      const nextMatchIndex = i + 1 < matches.length ? historyContent.indexOf('<file path="', match.startIndex) : -1;
+      
+      let rawContent = '';
+      let isComplete = false;
+      
+      const endIndex = historyContent.indexOf('</file>', match.startIndex);
+      
+      if (endIndex !== -1 && (nextMatchIndex === -1 || endIndex < nextMatchIndex)) {
+        // File tag is properly closed before the next file tag starts
+        rawContent = historyContent.substring(match.startIndex, endIndex);
+        isComplete = true;
+      } else {
+        // File is still being generated or closed tag is missing in current chunk
+        const limit = nextMatchIndex !== -1 ? nextMatchIndex : historyContent.length;
+        rawContent = historyContent.substring(match.startIndex, limit);
+        isComplete = false;
       }
+
+      const cleanContent = rawContent.trim();
+      actions.push({
+        path: match.path,
+        content: cleanContent,
+        highlightedContent: cleanContent ? hljs.highlightAuto(cleanContent).value : '',
+        isComplete
+      });
     }
     
     return actions;

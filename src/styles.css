@@ -5,8 +5,8 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --color-gemini-bg: #1f1f1f;
   --color-gemini-surface: #2a2a2a;
-  --color-gemini-border: #444746;
-  --color-gemini-accent: #8e918f;
+  --color-gemini-border: rgba(255, 255, 255, 0.1);
+  --color-gemini-accent: #3f3f46;
 }
 
 @layer base {

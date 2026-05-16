@@ -2,5 +2,5 @@
   "name": "Superintelligence",
   "description": "A polished mobile interface for AI interaction, featuring an interactive prompt area powered by advanced AI.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

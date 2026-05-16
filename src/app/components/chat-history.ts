@@ -3,31 +3,17 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { ChatMessage } from './chat-message';
 import { Message } from '../services/gemini';
-import { PromotionCard } from './promotion-card';
 
 @Component({
   selector: 'app-chat-history',
   standalone: true,
-  imports: [CommonModule, MatIconModule, ChatMessage, PromotionCard],
+  imports: [CommonModule, MatIconModule, ChatMessage],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="h-full overflow-y-auto pt-8 pb-64 px-2 scrollbar-thin overflow-x-hidden" #chatContainer>
-      <div class="flex flex-col gap-8">
+    <div class="h-full overflow-y-auto pt-8 pb-40 px-4 scrollbar-thin overflow-x-hidden" #chatContainer>
+      <div class="flex flex-col gap-8 max-w-[800px] mx-auto">
         @for (message of history(); track $index) {
           <app-chat-message [message]="message"></app-chat-message>
-          
-          <!-- Intelligent Ad Injection -->
-          @if ($index > 0 && ($index + 1) % 4 === 0) {
-            <div class="max-w-[400px] mx-auto w-full">
-              <app-promotion-card 
-                title="Cloud Dashboard" 
-                description="Gerencie sua infraestrutura com alto desempenho e segurança."
-                icon="cloud"
-                buttonText="Ver Projetos"
-                adId="cloud-ad-001"
-              ></app-promotion-card>
-            </div>
-          }
         }
         
         @if (isLoading()) {

@@ -1,5 +1,6 @@
-import { Injectable, signal, computed } from '@angular/core';
-import { GoogleGenAI } from '@google/genai';
+import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { isPlatformBrowser } from '@angular/common';
 
 export interface Message {
   role: 'user' | 'model';
@@ -18,12 +19,25 @@ export interface ChatSession {
   providedIn: 'root'
 })
 export class GeminiService {
-  private userApiKey = signal<string | null>(localStorage.getItem('user_gemini_api_key'));
+  private http = inject(HttpClient);
+  private platformId = inject(PLATFORM_ID);
+  private userApiKey = signal<string | null>(this.isBrowser() ? localStorage.getItem('user_gemini_api_key') : null);
   
-  private ai = new GoogleGenAI({ 
-    apiKey: this.userApiKey() || GEMINI_API_KEY 
-  });
-  
+  private isBrowser(): boolean {
+    return isPlatformBrowser(this.platformId);
+  }
+
+  private loadSessionsFromStorage(): ChatSession[] {
+    if (!this.isBrowser()) return [];
+    const saved = localStorage.getItem('gemini_chat_sessions');
+    return saved ? JSON.parse(saved) : [];
+  }
+
+  private saveSessionsToStorage() {
+    if (!this.isBrowser()) return;
+    localStorage.setItem('gemini_chat_sessions', JSON.stringify(this.sessions()));
+  }
+
   private readonly SYSTEM_INSTRUCTION = `Você é a Superintelligence, uma assistente de IA prestativa. Responda de forma concisa e eficaz usando Markdown.
   
 Se você for solicitado a criar, modificar ou mostrar código de arquivos, você DEVE usar uma estrutura especial chamada "Action History".
@@ -48,29 +62,8 @@ Espero que isso ajude!"
 
 Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas o conteúdo puro do arquivo.`;
 
-  private chatSubject = this.ai.chats.create({
-    model: "gemini-3-flash-preview",
-    config: {
-      systemInstruction: this.SYSTEM_INSTRUCTION,
-    }
-  });
-
   private sessions = signal<ChatSession[]>(this.loadSessionsFromStorage());
   private activeSessionId = signal<string | null>(null);
-
-  constructor() {
-    // If sessions exist but none is active, we could technically load the last one.
-    // But we'll keep the current behavior of starting fresh if history signal is empty.
-  }
-
-  private loadSessionsFromStorage(): ChatSession[] {
-    const saved = localStorage.getItem('gemini_chat_sessions');
-    return saved ? JSON.parse(saved) : [];
-  }
-
-  private saveSessionsToStorage() {
-    localStorage.setItem('gemini_chat_sessions', JSON.stringify(this.sessions()));
-  }
 
   chatSessions = computed(() => this.sessions().sort((a, b) => b.createdAt - a.createdAt));
 
@@ -81,13 +74,6 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
   createNewSession() {
     this.chatHistory.set([]);
     this.activeSessionId.set(null);
-    // Reset subject
-    this.chatSubject = this.ai.chats.create({
-      model: "gemini-3-flash-preview",
-      config: {
-        systemInstruction: this.SYSTEM_INSTRUCTION,
-      }
-    });
   }
 
   loadSession(id: string) {
@@ -95,18 +81,6 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
     if (session) {
       this.chatHistory.set(session.messages);
       this.activeSessionId.set(session.id);
-      
-      // Re-initialize subject with history
-      this.chatSubject = this.ai.chats.create({
-        model: "gemini-3-flash-preview",
-        config: {
-          systemInstruction: this.SYSTEM_INSTRUCTION,
-        },
-        history: session.messages.map(m => ({
-          role: m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.parts }]
-        }))
-      });
     }
   }
 
@@ -119,16 +93,10 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
   }
 
   setApiKey(key: string) {
-    localStorage.setItem('user_gemini_api_key', key);
+    if (this.isBrowser()) {
+      localStorage.setItem('user_gemini_api_key', key);
+    }
     this.userApiKey.set(key);
-    // Re-initialize with new key
-    this.ai = new GoogleGenAI({ apiKey: key });
-    this.chatSubject = this.ai.chats.create({
-      model: "gemini-3-flash-preview",
-      config: {
-        systemInstruction: this.SYSTEM_INSTRUCTION,
-      }
-    });
   }
 
   getApiKey() {
@@ -167,7 +135,6 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
       const elapsed = parseFloat(((performance.now() - startTime) / 1000).toFixed(1));
       this.elapsedTime.set(elapsed);
       
-      // Update status every 3 seconds
       if (Math.floor(elapsed) % 3 === 0 && statusIndex < statusUpdates.length - 1) {
         statusIndex = Math.min(statusUpdates.length - 1, Math.floor(elapsed / 3));
         this.workingStatus.set(statusUpdates[statusIndex]);
@@ -178,27 +145,104 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
     this.chatHistory.update(history => [...history, userMessage]);
 
     try {
-      const response = await this.chatSubject.sendMessage({ message: trimmedPrompt });
-      const endTime = performance.now();
-      const durationSeconds = parseFloat(((endTime - startTime) / 1000).toFixed(1));
+      const history = this.chatHistory().slice(0, -1).map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.parts }]
+      }));
 
       const modelMessage: Message = { 
         role: 'model', 
-        parts: response.text || 'Sem resposta',
-        responseTime: durationSeconds
+        parts: '',
       };
       this.chatHistory.update(history => [...history, modelMessage]);
 
-      // Handle session persistence
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: trimmedPrompt,
+          history,
+          apiKey: this.userApiKey(),
+          systemInstruction: this.SYSTEM_INSTRUCTION
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      
+      if (!reader) throw new Error('No reader found');
+
+      let accumulatedText = '';
+      let chunksReceived = 0;
+      
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        chunksReceived++;
+        if (chunksReceived === 1) {
+          this.workingStatus.set('Responding...');
+          if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = undefined;
+          }
+        }
+
+        const chunk = decoder.decode(value, { stream: true });
+        accumulatedText += chunk;
+        
+        this.chatHistory.update(history => {
+          const lastIndex = history.length - 1;
+          const updatedHistory = [...history];
+          updatedHistory[lastIndex] = { ...updatedHistory[lastIndex], parts: accumulatedText };
+          return updatedHistory;
+        });
+      }
+
+      const endTime = performance.now();
+      const durationSeconds = parseFloat(((endTime - startTime) / 1000).toFixed(1));
+
+      this.chatHistory.update(history => {
+        const lastIndex = history.length - 1;
+        const updatedHistory = [...history];
+        updatedHistory[lastIndex] = { ...updatedHistory[lastIndex], responseTime: durationSeconds };
+        return updatedHistory;
+      });
+
       this.persistActiveChat();
 
     } catch (error) {
       console.error('Error sending message:', error);
-      const errorMessage: Message = { 
-        role: 'model', 
-        parts: 'Erro ao se comunicar com a IA. Por favor, verifique sua chave de API.' 
-      };
-      this.chatHistory.update(history => [...history, errorMessage]);
+      let displayMessage = 'Erro ao se comunicar com a IA. Por favor, verifique sua conexão.';
+      
+      if (error instanceof Error) {
+        try {
+          const parsedError = JSON.parse(error.message);
+          displayMessage = parsedError.error || displayMessage;
+        } catch {
+          displayMessage = error.message || displayMessage;
+        }
+      }
+
+      this.chatHistory.update(history => {
+        // Remove the empty model message added before if it exists
+        const lastMessage = history[history.length - 1];
+        if (lastMessage && lastMessage.role === 'model' && !lastMessage.parts) {
+          return [...history.slice(0, -1), { 
+            role: 'model', 
+            parts: displayMessage 
+          }];
+        }
+        return [...history, { 
+          role: 'model', 
+          parts: displayMessage 
+        }];
+      });
     } finally {
       this.isLoading.set(false);
       if (this.timerInterval) {
