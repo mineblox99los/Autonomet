@@ -9,8 +9,23 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
 
+import { existsSync } from 'node:fs';
+
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
-const browserDistFolder = resolve(serverDistFolder, 'dist/browser');
+// Try standard locations
+let browserDistFolder = resolve(serverDistFolder, 'dist/browser');
+
+if (!existsSync(browserDistFolder)) {
+  // If we are already inside dist or somewhere else
+  browserDistFolder = resolve(serverDistFolder, '../browser');
+}
+
+if (!existsSync(browserDistFolder)) {
+  // Fallback to process cwd
+  browserDistFolder = resolve(process.cwd(), 'dist/browser');
+}
+
+console.log('Using browserDistFolder:', browserDistFolder);
 
 const app = express();
 app.use(express.json());
@@ -74,6 +89,7 @@ app.use(
   express.static(browserDistFolder, {
     maxAge: '1y',
     index: 'index.html',
+    redirect: false
   }),
 );
 
