@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Component, ChangeDetectionStrategy, output, input, signal, HostListener, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -102,16 +103,21 @@ import { GeminiService } from '../services/gemini';
 
             <div class="relative">
               <button 
-                (click)="toggleMicDropdown($event)"
-                class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:bg-white/5 active:bg-blue-500/30 transition-all"
+                (click)="toggleMic($event)"
+                class="w-8 h-8 flex items-center justify-center rounded-full transition-all"
+                [class.text-blue-400]="isRecording()"
+                [class.bg-blue-500/10]="isRecording()"
+                [class.text-zinc-400]="!isRecording()"
+                [class.hover:bg-white/5]="!isRecording()"
+                [class.animate-pulse-blue]="isRecording()"
                 id="mic-button"
               >
-                <mat-icon class="scale-90">mic_none</mat-icon>
+                <mat-icon class="scale-90">{{ isRecording() ? 'mic' : 'mic_none' }}</mat-icon>
               </button>
               
-              @if (isMicDropdownOpen()) {
+              @if (isMicNotSupportedOpen()) {
                 <div class="absolute bottom-full left-0 mb-3 bg-gemini-surface text-zinc-300 text-[12px] px-4 py-2 rounded-xl border border-gemini-border shadow-2xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-200 z-50">
-                  Em desenvolvimento
+                  Microfone não suportado no navegador
                 </div>
               }
             </div>
@@ -139,9 +145,50 @@ export class ChatInput {
   openApiKeyModal = output<void>();
 
   promptControl = new FormControl('');
-  isMicDropdownOpen = signal(false);
+  isMicNotSupportedOpen = signal(false);
+  isRecording = signal(false);
   isDropdownOpen = signal(false);
   isPlusDropdownOpen = signal(false);
+  
+  private recognition: any;
+
+  constructor() {
+    this.setupSpeechRecognition();
+  }
+
+  private setupSpeechRecognition() {
+    if (typeof window === 'undefined') return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      this.recognition = new SpeechRecognition();
+      this.recognition.continuous = false;
+      this.recognition.interimResults = true;
+      this.recognition.lang = 'pt-BR';
+
+      this.recognition.onstart = () => {
+        this.isRecording.set(true);
+      };
+
+      this.recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map((result: any) => result.transcript)
+          .join('');
+        
+        this.promptControl.setValue(transcript);
+      };
+
+      this.recognition.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        this.isRecording.set(false);
+      };
+
+      this.recognition.onend = () => {
+        this.isRecording.set(false);
+      };
+    }
+  }
 
   maskedKey = computed(() => {
     const key = this.currentKey();
@@ -162,13 +209,23 @@ export class ChatInput {
     }
   }
 
-  toggleMicDropdown(event: Event) {
+  toggleMic(event: Event) {
     event.stopPropagation();
-    const newState = !this.isMicDropdownOpen();
-    this.closeAllDropdowns();
-    this.isMicDropdownOpen.set(newState);
-    if (this.isMicDropdownOpen()) {
-      setTimeout(() => this.isMicDropdownOpen.set(false), 3000);
+    if (!this.recognition) {
+      this.isMicNotSupportedOpen.set(true);
+      setTimeout(() => this.isMicNotSupportedOpen.set(false), 3000);
+      return;
+    }
+
+    if (this.isRecording()) {
+      this.recognition.stop();
+    } else {
+      this.closeAllDropdowns();
+      try {
+        this.recognition.start();
+      } catch (e) {
+        console.error('Failed to start recognition', e);
+      }
     }
   }
 
@@ -187,18 +244,16 @@ export class ChatInput {
   }
 
   private closeAllDropdowns() {
-    this.isMicDropdownOpen.set(false);
     this.isDropdownOpen.set(false);
     this.isPlusDropdownOpen.set(false);
   }
 
   @HostListener('window:click', ['$event'])
   onWindowClick(event: MouseEvent) {
-    if (this.isMicDropdownOpen() || this.isDropdownOpen() || this.isPlusDropdownOpen()) {
+    if (this.isDropdownOpen() || this.isPlusDropdownOpen()) {
       const target = event.target as HTMLElement;
       if (!target.closest('.dropdown-container')) {
         this.isPlusDropdownOpen.set(false);
-        this.isMicDropdownOpen.set(false);
         this.isDropdownOpen.set(false);
       }
     }
