@@ -168,6 +168,44 @@ Observação Crítica: Jamais utilize blocos de código Markdown (\` \` \`) dent
     }
   }
 
+  private getOptimalConfig(prompt: string) {
+    const p = prompt.toLowerCase();
+    
+    // Categorias de detecção
+    const isCreative = p.includes('escreva') || p.includes('poema') || p.includes('história') || p.includes('criativo') || p.includes('brainstorm');
+    const isTechnical = p.includes('código') || p.includes('programação') || p.includes('script') || p.includes('algoritmo') || p.includes('bug') || p.includes('fix');
+    const isAnalytical = p.includes('analise') || p.includes('explique') || p.includes('por que') || p.includes('como funciona') || p.includes('resuma');
+    const isOrganized = p.includes('lista') || p.includes('plano') || p.includes('calendário') || p.includes('etapas') || p.includes('passo a passo');
+
+    let temperature = 0.4; // Default equilibrado
+    let topP = 0.9;
+    let extraInstruction = '';
+
+    if (isTechnical) {
+      temperature = 0.1;
+      topP = 0.85;
+      extraInstruction = '\n\nMODO TÉCNICO ATIVADO: Priorize rigor sintático, eficiência de código e documentação clara. Seja extremamente preciso e evite ambiguidades.';
+    } else if (isCreative) {
+      temperature = 0.8;
+      topP = 0.98;
+      extraInstruction = '\n\nMODO CRIATIVO ATIVADO: Utilize uma linguagem rica, metafórica e envolvente. Priorize a fluidez narrativa e a originalidade.';
+    } else if (isAnalytical) {
+      temperature = 0.3;
+      topP = 0.9;
+      extraInstruction = '\n\nMODO ANALÍTICO ATIVADO: Use raciocínio de "cadeia de pensamento". Decomponha problemas complexos em partes menores e explique a lógica por trás de cada conclusão.';
+    } else if (isOrganized) {
+      temperature = 0.2;
+      topP = 0.8;
+      extraInstruction = '\n\nMODO ORGANIZADO ATIVADO: Use estruturas de tópicos, tabelas e cronogramas. Priorize a ordem lógica e a facilidade de leitura rápida.';
+    }
+
+    return {
+      temperature,
+      topP,
+      systemInstruction: this.SYSTEM_INSTRUCTION + extraInstruction
+    };
+  }
+
   async sendMessage(prompt: string) {
     if (!prompt.trim() || this.isLoading()) return;
     if (!this.isBrowser()) return;
@@ -187,12 +225,15 @@ Observação Crítica: Jamais utilize blocos de código Markdown (\` \` \`) dent
     this.workingStatus.set('Working');
     const startTime = performance.now();
 
+    // Obter configuração otimizada baseada no prompt
+    const smartConfig = this.getOptimalConfig(trimmedPrompt);
+
     const statusUpdates = [
-      'Analisando solicitação...',
+      'Analisando intenção e calibrando IA...',
+      'Meta-sintonizando parâmetros...',
       'Planejando resposta...',
       'Redigindo conteúdo...',
-      'Refinando resposta...',
-      'Finalizando...'
+      'Refinando resposta...'
     ];
     let statusIndex = 0;
 
@@ -200,8 +241,8 @@ Observação Crítica: Jamais utilize blocos de código Markdown (\` \` \`) dent
       const elapsed = parseFloat(((performance.now() - startTime) / 1000).toFixed(1));
       this.elapsedTime.set(elapsed);
       
-      if (Math.floor(elapsed) % 3 === 0 && statusIndex < statusUpdates.length - 1) {
-        statusIndex = Math.min(statusUpdates.length - 1, Math.floor(elapsed / 3));
+      if (Math.floor(elapsed) % 2 === 0 && statusIndex < statusUpdates.length - 1) {
+        statusIndex = Math.min(statusUpdates.length - 1, Math.floor(elapsed / 2));
         this.workingStatus.set(statusUpdates[statusIndex]);
       }
     }, 100);
@@ -226,12 +267,15 @@ Observação Crítica: Jamais utilize blocos de código Markdown (\` \` \`) dent
       const chat = ai.chats.create({
         model: this.getSelectedModel(),
         config: {
-          systemInstruction: this.SYSTEM_INSTRUCTION,
-          tools: this.isGoogleSearchEnabled() ? [{ googleSearch: {} }] : undefined,
-          temperature: 0.2,
-          topP: 0.8,
+          systemInstruction: smartConfig.systemInstruction,
+          tools: [
+            ...(this.isGoogleSearchEnabled() ? [{ googleSearch: {} }] : []),
+            { codeExecution: {} }
+          ],
+          temperature: smartConfig.temperature,
+          topP: smartConfig.topP,
           topK: 40,
-          maxOutputTokens: 8192,
+          maxOutputTokens: 65536,
         },
         history: chatHistory
       });
