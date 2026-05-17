@@ -1,6 +1,7 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
+import { GoogleGenAI } from '@google/genai';
 
 export interface GroundingChunk {
   web?: {
@@ -137,33 +138,41 @@ Não use blocos de código markdown (\` \` \`) dentro da tag <file>.`;
   private timerInterval?: ReturnType<typeof setInterval>;
 
   async validateApiKey(key: string) {
+    if (!this.isBrowser()) return { valid: false, error: 'Apenas navegador.' };
+    
     try {
-      const response = await fetch('/api/validate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: key })
+      const ai = new GoogleGenAI({ apiKey: key });
+      
+      // Minimal test request
+      await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: [{ role: 'user', parts: [{ text: 'hi' }] }]
       });
       
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch {
-          return { valid: false, error: `Erro no servidor: ${response.status} ${response.statusText}`, debug: null };
-        }
-        return { valid: false, error: errorData.error || 'Erro interno do servidor', debug: errorData.debug || errorData };
-      }
-      
-      return await response.json() as { valid: boolean; error?: string; debug?: unknown };
+      return { valid: true };
     } catch (e: unknown) {
-      console.error('Fetch error during key validation:', e);
-      const error = e as Error;
-      return { valid: false, error: `Erro de conexão: ${error.message || 'Verifique sua internet ou se o servidor está ativo.'}`, debug: e };
+      console.error('Validation error:', e);
+      const error = e as { message?: string };
+      return { 
+        valid: false, 
+        error: 'Chave de API inválida ou erro na conexão com o Gemini.',
+        debug: error.message || e
+      };
     }
   }
 
   async sendMessage(prompt: string) {
     if (!prompt.trim() || this.isLoading()) return;
+    if (!this.isBrowser()) return;
+
+    const apiKey = this.userApiKey();
+    if (!apiKey) {
+      this.chatHistory.update(history => [...history, { 
+        role: 'model', 
+        parts: 'Por favor, configure sua chave de API nas configurações.' 
+      }]);
+      return;
+    }
 
     const trimmedPrompt = prompt.trim();
     this.isLoading.set(true);
@@ -194,7 +203,9 @@ Não use blocos de código markdown (\` \` \`) dentro da tag <file>.`;
     this.chatHistory.update(history => [...history, userMessage]);
 
     try {
-      const history = this.chatHistory().slice(0, -1).map(m => ({
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const chatHistory = this.chatHistory().slice(0, -1).map(m => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.parts }]
       }));
@@ -205,71 +216,47 @@ Não use blocos de código markdown (\` \` \`) dentro da tag <file>.`;
       };
       this.chatHistory.update(history => [...history, modelMessage]);
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: trimmedPrompt,
-          history,
-          apiKey: this.userApiKey(),
+      const chat = ai.chats.create({
+        model: this.getSelectedModel(),
+        config: {
           systemInstruction: this.SYSTEM_INSTRUCTION,
-          googleSearchEnabled: this.isGoogleSearchEnabled()
-        })
+          tools: this.isGoogleSearchEnabled() ? [{ googleSearch: {} }] : undefined,
+          temperature: 1.0,
+          topP: 0.95,
+          topK: 64,
+          maxOutputTokens: 8192,
+        },
+        history: chatHistory
       });
 
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      
-      if (!reader) throw new Error('No reader found');
+      const result = await chat.sendMessageStream({ message: trimmedPrompt });
       
       let accumulatedText = '';
       let chunksReceived = 0;
-      let buffer = '';
       
-      while (true) {
-        const { done, value } = await reader.read();
-        const chunkStr = decoder.decode(value, { stream: true });
-        buffer += chunkStr;
-
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep the last incomplete line in the buffer
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          
-          try {
-            const data = JSON.parse(line);
-            if (data.text) accumulatedText += data.text;
-            
-            chunksReceived++;
-            if (chunksReceived === 1) {
-              this.workingStatus.set('Responding...');
-              if (this.timerInterval) {
-                clearInterval(this.timerInterval);
-                this.timerInterval = undefined;
-              }
-            }
-
-            this.chatHistory.update(history => {
-              const lastIndex = history.length - 1;
-              const updatedHistory = [...history];
-              updatedHistory[lastIndex] = { 
-                ...updatedHistory[lastIndex], 
-                parts: accumulatedText,
-                groundingMetadata: data.groundingMetadata || updatedHistory[lastIndex].groundingMetadata
-              };
-              return updatedHistory;
-            });
-          } catch (e) {
-            console.error('Error parsing NDJSON line:', e, line);
+      for await (const chunk of result) {
+        const chunkText = chunk.text || '';
+        accumulatedText += chunkText;
+        
+        chunksReceived++;
+        if (chunksReceived === 1) {
+          this.workingStatus.set('Responding...');
+          if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = undefined;
           }
         }
 
-        if (done) break;
+        this.chatHistory.update(history => {
+          const lastIndex = history.length - 1;
+          const updatedHistory = [...history];
+          updatedHistory[lastIndex] = { 
+            ...updatedHistory[lastIndex], 
+            parts: accumulatedText,
+            groundingMetadata: (chunk.candidates?.[0]?.groundingMetadata as unknown) as GroundingMetadata
+          };
+          return updatedHistory;
+        });
       }
 
       const endTime = performance.now();
@@ -284,21 +271,16 @@ Não use blocos de código markdown (\` \` \`) dentro da tag <file>.`;
 
       this.persistActiveChat();
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error sending message:', error);
-      let displayMessage = 'Erro ao se comunicar com a IA. Por favor, verifique sua conexão.';
+      let displayMessage = 'Erro ao se comunicar com a IA. Verifique sua chave ou conexão.';
       
-      if (error instanceof Error) {
-        try {
-          const parsedError = JSON.parse(error.message);
-          displayMessage = parsedError.error || displayMessage;
-        } catch {
-          displayMessage = error.message || displayMessage;
-        }
+      const err = error as { message?: string };
+      if (err?.message) {
+        displayMessage = err.message;
       }
 
       this.chatHistory.update(history => {
-        // Remove the empty model message added before if it exists
         const lastMessage = history[history.length - 1];
         if (lastMessage && lastMessage.role === 'model' && !lastMessage.parts) {
           return [...history.slice(0, -1), { 
