@@ -7,10 +7,18 @@ import {
 import express from 'express';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import { GoogleGenAI } from '@google/genai';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
-const browserDistFolder = resolve(serverDistFolder, '../browser');
+// Em produção (compilado), fica em dist/server.mjs e o browser em dist/browser
+// Em desenvolvimento (rodando via node src/server.ts), o browser fica em dist/browser
+let browserDistFolder = resolve(serverDistFolder, '../browser');
+
+// Fallback para dist/browser se o anterior não existir (comum em dev)
+if (!existsSync(browserDistFolder)) {
+  browserDistFolder = resolve(process.cwd(), 'dist/browser');
+}
 
 const app = express();
 app.use(express.json());
