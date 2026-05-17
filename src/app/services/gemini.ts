@@ -36,12 +36,20 @@ export class GeminiService {
   private platformId = inject(PLATFORM_ID);
   private userApiKey = signal<string | null>(this.isBrowser() ? localStorage.getItem('user_gemini_api_key') : null);
   isGoogleSearchEnabled = signal<boolean>(this.isBrowser() ? localStorage.getItem('google_search_enabled') === 'true' : false);
+  systemInstruction = signal<string>(this.isBrowser() ? localStorage.getItem('user_system_instruction') || '' : '');
   
   toggleGoogleSearch() {
     const newValue = !this.isGoogleSearchEnabled();
     this.isGoogleSearchEnabled.set(newValue);
     if (this.isBrowser()) {
       localStorage.setItem('google_search_enabled', String(newValue));
+    }
+  }
+
+  setSystemInstruction(instruction: string) {
+    this.systemInstruction.set(instruction);
+    if (this.isBrowser()) {
+      localStorage.setItem('user_system_instruction', instruction);
     }
   }
 
@@ -69,28 +77,7 @@ export class GeminiService {
     localStorage.setItem('gemini_chat_sessions', JSON.stringify(this.sessions()));
   }
 
-  private readonly SYSTEM_INSTRUCTION = `Você é o Superintelligence, um assistente de IA de elite, projetado para ser excepcionalmente polido, disciplinado e organizado. Sua conduta deve refletir o mais alto padrão de profissionalismo, ética e precisão.
-
-### Diretrizes de Comportamento e Tom
-1. **Disciplina Intelectual**: Aborde cada solicitação com rigor analítico. Seja objetivo, factual e imparcial. Se uma pergunta for ambígua, peça esclarecimentos de forma cortês antes de assumir intenções.
-2. **Organização Exemplar**: Estruture suas respostas com clareza impecável. Utilize títulos (Markdown), listas bem definidas e separações lógicas para facilitar a compreensão de conceitos complexos.
-3. **Eloquência e Refinamento**: Mantenha um tom profissional, acadêmico quando apropriado, mas sempre acessível. Evite gírias, excesso de exclamações ou informalidade desnecessária. Sua comunicação deve ser elegante e precisa.
-4. **Concisão com Profundidade**: Forneça respostas substanciais sem verbosidade. Priorize a qualidade da informação sobre a quantidade de palavras.
-
-### Capacidades Técnicas
-- **Pesquisa em Tempo Real**: Ative a pesquisa sempre que houver necessidade de dados factuais recentes ou verificação de fontes.
-- **Execução de Código**: Utilize a execução de código para validar algoritmos, realizar cálculos matemáticos avançados ou processar dados com precisão absoluta.
-- **Visualização de Dados**: Para dados complexos, considere propor representações visuais utilizando a biblioteca D3.js.
-
-### Protocolo de Manipulação de Arquivos (Obrigatório)
-Sempre que o usuário solicitar a criação, edição ou exibição de arquivos de código, você deve obrigatoriamente utilizar a estrutura:
-<action_history>
-<file path="caminho/do/arquivo.ext">
-// conteúdo aqui
-</file>
-</action_history>
-
-Observação Crítica: Jamais utilize blocos de código Markdown (\` \` \`) dentro das tags <file>.`;
+  private readonly SYSTEM_INSTRUCTION = ``;
 
   private sessions = signal<ChatSession[]>(this.loadSessionsFromStorage());
   private activeSessionId = signal<string | null>(null);
@@ -166,41 +153,11 @@ Observação Crítica: Jamais utilize blocos de código Markdown (\` \` \`) dent
     }
   }
 
-  private getOptimalConfig(prompt: string) {
-    const p = prompt.toLowerCase();
-    
-    // Categorias de detecção
-    const isCreative = p.includes('escreva') || p.includes('poema') || p.includes('história') || p.includes('criativo') || p.includes('brainstorm');
-    const isTechnical = p.includes('código') || p.includes('programação') || p.includes('script') || p.includes('algoritmo') || p.includes('bug') || p.includes('fix');
-    const isAnalytical = p.includes('analise') || p.includes('explique') || p.includes('por que') || p.includes('como funciona') || p.includes('resuma');
-    const isOrganized = p.includes('lista') || p.includes('plano') || p.includes('calendário') || p.includes('etapas') || p.includes('passo a passo');
-
-    let temperature = 0.4; // Default equilibrado
-    let topP = 0.9;
-    let extraInstruction = '';
-
-    if (isTechnical) {
-      temperature = 0.1;
-      topP = 0.85;
-      extraInstruction = '\n\nMODO TÉCNICO ATIVADO: Priorize rigor sintático, eficiência de código e documentação clara. Seja extremamente preciso e evite ambiguidades.';
-    } else if (isCreative) {
-      temperature = 0.8;
-      topP = 0.98;
-      extraInstruction = '\n\nMODO CRIATIVO ATIVADO: Utilize uma linguagem rica, metafórica e envolvente. Priorize a fluidez narrativa e a originalidade.';
-    } else if (isAnalytical) {
-      temperature = 0.3;
-      topP = 0.9;
-      extraInstruction = '\n\nMODO ANALÍTICO ATIVADO: Use raciocínio de "cadeia de pensamento". Decomponha problemas complexos em partes menores e explique a lógica por trás de cada conclusão.';
-    } else if (isOrganized) {
-      temperature = 0.2;
-      topP = 0.8;
-      extraInstruction = '\n\nMODO ORGANIZADO ATIVADO: Use estruturas de tópicos, tabelas e cronogramas. Priorize a ordem lógica e a facilidade de leitura rápida.';
-    }
-
+  private getOptimalConfig() {
     return {
-      temperature,
-      topP,
-      systemInstruction: this.SYSTEM_INSTRUCTION + extraInstruction
+      temperature: 0,
+      topP: 0.95,
+      systemInstruction: this.systemInstruction()
     };
   }
 
@@ -215,7 +172,7 @@ Observação Crítica: Jamais utilize blocos de código Markdown (\` \` \`) dent
     const startTime = performance.now();
 
     // Obter configuração otimizada baseada no prompt
-    const smartConfig = this.getOptimalConfig(trimmedPrompt);
+    const smartConfig = this.getOptimalConfig();
 
     const statusUpdates = [
       'Analisando intenção e calibrando IA...',
@@ -302,7 +259,15 @@ Observação Crítica: Jamais utilize blocos de código Markdown (\` \` \`) dent
 
           try {
             const chunk = JSON.parse(data);
-            const chunkText = chunk.text || '';
+            
+            // Extract text from Google GenAI response format
+            let chunkText = '';
+            if (chunk.candidates?.[0]?.content?.parts) {
+              chunkText = chunk.candidates[0].content.parts
+                .map((p: { text?: string }) => p.text || '')
+                .join('');
+            }
+            
             accumulatedText += chunkText;
             
             chunksReceived++;

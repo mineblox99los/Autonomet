@@ -16,7 +16,7 @@ import { RouterLink } from '@angular/router';
           <span>Voltar ao Chat</span>
         </a>
         <h1 class="text-4xl font-bold text-white mb-4">Termos de Uso</h1>
-        <p class="text-zinc-500">Última atualização: 16 de Maio de 2026</p>
+        <p class="text-zinc-500">Última atualização: 17 de Maio de 2026</p>
       </header>
 
       <div class="space-y-8 leading-relaxed">
@@ -43,7 +43,7 @@ import { RouterLink } from '@angular/router';
         <section>
           <h2 class="text-xl font-bold text-white mb-4">4. Isenção de Responsabilidade</h2>
           <p class="bg-white/5 p-4 rounded-xl border border-white/10">
-            A Inteligência Artificial pode gerar informações imprecisas ou fictícias. O Superintelligence não garante a veracidade, precisão ou atualidade das informações geradas pela IA. Verifique sempre informações críticas.
+            A Inteligência Artificial pode gerar informações imprecisas ou fictícias. Este serviço utiliza o modelo <strong>Gemini 3.0 Flash</strong> com dados atualizados até <strong>Janeiro de 2025</strong>. O Superintelligence não garante a veracidade, precisão ou atualidade das informações geradas pela IA. Verifique sempre informações críticas.
           </p>
         </section>
 

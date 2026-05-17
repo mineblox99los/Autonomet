@@ -8,12 +8,13 @@ import { ChatHistory } from './chat-history';
 import { ChatInput } from './chat-input';
 import { ApiKeyModal } from './api-key-modal';
 import { Sidebar } from './sidebar';
+import { SystemInstructionModal } from './system-instruction-modal';
 
 @Component({
   selector: 'app-chat-view',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, MatIconModule, RouterLink, Home, ChatHistory, ChatInput, ApiKeyModal, Sidebar],
+  imports: [CommonModule, MatIconModule, RouterLink, Home, ChatHistory, ChatInput, ApiKeyModal, Sidebar, SystemInstructionModal],
   template: `
     <div class="flex flex-col h-[100dvh] bg-gemini-bg font-sans overflow-hidden">
       <!-- Header -->
@@ -79,12 +80,13 @@ import { Sidebar } from './sidebar';
               [hasCustomKey]="gemini.hasCustomKey()"
               [currentKey]="gemini.getApiKey()"
               (openApiKeyModal)="isApiKeyModalOpen.set(true)"
+              (openSystemInstructionModal)="isSystemInstructionModalOpen.set(true)"
               (send)="sendMessage($event)">
             </app-chat-input>
             
             <div class="flex flex-col items-center gap-1 mt-3 px-4">
               <div class="text-[10px] text-zinc-500 text-center">
-                A IA pode apresentar informações imprecisas, inclusive sobre pessoas, por isso verifique as respostas.
+                A IA pode apresentar informações imprecisas, inclusive sobre pessoas, por isso verifique as respostas. Utiliza o Gemini 3.0 Flash. Dados até Janeiro de 2025.
               </div>
               <div class="flex items-center gap-3 text-[10px] font-medium">
                 <a routerLink="/privacy" class="text-zinc-600 hover:text-blue-400 underline transition-colors">Privacidade</a>
@@ -104,6 +106,14 @@ import { Sidebar } from './sidebar';
           (clearKey)="clearApiKey()"
           (closeModal)="isApiKeyModalOpen.set(false)"
         ></app-api-key-modal>
+      }
+
+      @if (isSystemInstructionModalOpen()) {
+        <app-system-instruction-modal
+          [currentInstruction]="gemini.systemInstruction()"
+          (save)="saveSystemInstruction($event)"
+          (closeModal)="isSystemInstructionModalOpen.set(false)"
+        ></app-system-instruction-modal>
       }
     </div>
   `,
@@ -133,6 +143,7 @@ import { Sidebar } from './sidebar';
 export class ChatView {
   gemini = inject(GeminiService);
   isApiKeyModalOpen = signal(false);
+  isSystemInstructionModalOpen = signal(false);
   isSidebarOpen = signal(false);
 
   sendMessage(prompt: string) {
@@ -142,6 +153,11 @@ export class ChatView {
   saveApiKey(key: string) {
     this.gemini.setApiKey(key);
     this.isApiKeyModalOpen.set(false);
+  }
+
+  saveSystemInstruction(instruction: string) {
+    this.gemini.setSystemInstruction(instruction);
+    this.isSystemInstructionModalOpen.set(false);
   }
 
   clearApiKey() {

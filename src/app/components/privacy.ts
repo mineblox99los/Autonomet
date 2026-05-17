@@ -16,7 +16,7 @@ import { RouterLink } from '@angular/router';
           <span>Voltar ao Chat</span>
         </a>
         <h1 class="text-4xl font-bold text-white mb-4">Política de Privacidade</h1>
-        <p class="text-zinc-500">Última atualização: 16 de Maio de 2026</p>
+        <p class="text-zinc-500">Última atualização: 17 de Maio de 2026</p>
       </header>
 
       <div class="space-y-8 leading-relaxed">

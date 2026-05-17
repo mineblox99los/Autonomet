@@ -49,10 +49,16 @@ import { GeminiService } from '../services/gemini';
                   </div>
 
                   <button 
-                    (click)="openApiKeyModal.emit()"
-                    class="w-full text-left text-xs px-2 py-1.5 rounded-lg text-blue-400 hover:bg-blue-400/5 active:bg-blue-400/10 transition-colors font-medium flex items-center gap-2"
+                    (click)="openSystemInstructionModal.emit()"
+                    class="w-full text-center text-xs px-2 py-2 rounded-xl text-zinc-300 bg-white/[0.05] border border-white/[0.05] hover:bg-white/10 active:bg-white/20 transition-all font-medium mb-2"
                   >
-                    <mat-icon class="!text-[16px]">key</mat-icon>
+                    Personalizar IA
+                  </button>
+
+                  <button 
+                    (click)="openApiKeyModal.emit()"
+                    class="w-full text-center text-xs px-2 py-2 rounded-xl text-zinc-300 bg-white/[0.05] border border-white/[0.05] hover:bg-white/10 active:bg-white/20 transition-all font-medium"
+                  >
                     Gerenciar Chave
                   </button>
                 </div>
@@ -101,6 +107,7 @@ export class ChatInput {
   
   send = output<string>();
   openApiKeyModal = output<void>();
+  openSystemInstructionModal = output<void>();
 
   promptControl = new FormControl('');
   isMicNotSupportedOpen = signal(false);

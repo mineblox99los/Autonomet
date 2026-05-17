@@ -57,18 +57,26 @@ export class ChatHistory {
   
   chatContainer = viewChild<ElementRef<HTMLDivElement>>('chatContainer');
 
+  private lastHistoryLength = 0;
+
   constructor() {
     effect(() => {
-      if (this.history().length > 0) {
+      const currentHistory = this.history();
+      // Scroll only if a new message is added (length increases)
+      if (currentHistory.length > this.lastHistoryLength) {
         setTimeout(() => this.scrollToBottom(), 100);
       }
+      this.lastHistoryLength = currentHistory.length;
     });
   }
 
   private scrollToBottom() {
     const container = this.chatContainer()?.nativeElement;
     if (container) {
-      container.scrollTop = container.scrollHeight;
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      });
     }
   }
 }
