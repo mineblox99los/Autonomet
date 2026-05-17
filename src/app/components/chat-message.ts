@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
 import { MarkdownPipe } from '../markdown.pipe';
-import { Message } from '../services/gemini';
+import { Message, GeminiService } from '../services/gemini';
 import { ActionHistory } from './action-history';
 
 @Component({
@@ -15,6 +15,22 @@ import { ActionHistory } from './action-history';
     <div class="flex flex-col gap-2 w-full max-w-full group">
       @if (message().role === 'user') {
         <div class="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-gemini-surface/50 text-white border border-gemini-border/50">
+          @if (message().images && message().images!.length > 0) {
+            <div class="flex flex-wrap gap-2 mb-3">
+              @for (img of message().images; track $index) {
+                <img 
+                  [src]="img.data" 
+                  alt="Imagem enviada" 
+                  class="max-w-[200px] max-h-[200px] rounded-xl border border-gemini-border shadow-sm cursor-zoom-in hover:opacity-90 transition-opacity"
+                  role="button"
+                  tabindex="0"
+                  (click)="gemini.viewingImage.set(img.data)"
+                  (keydown.enter)="gemini.viewingImage.set(img.data)"
+                  (keydown.space)="gemini.viewingImage.set(img.data)"
+                >
+              }
+            </div>
+          }
           <div class="prose prose-invert prose-sm max-w-none leading-relaxed text-[14px] sm:text-[15px]" 
                [innerHTML]="message().parts | markdown">
           </div>
@@ -120,6 +136,7 @@ export class ChatMessage {
   message = input.required<Message>();
   openSettings = output<void>();
   sanitizer = inject(DomSanitizer);
+  gemini = inject(GeminiService);
   isThinkingExpanded = signal(false);
 
   cleanParts = computed(() => {

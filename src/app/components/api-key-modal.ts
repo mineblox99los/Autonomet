@@ -16,7 +16,6 @@ import { GeminiService } from '../services/gemini';
           <div>
             <h2 class="text-lg font-semibold text-white">Configurações de API</h2>
             <p class="text-xs text-zinc-400">Gerencie sua chave para o chat</p>
-            <p class="text-[10px] text-zinc-600 mt-0.5">Build v1.1.2</p>
           </div>
           <button (click)="closeModal.emit()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-zinc-500 hover:text-white transition-all active:scale-95">
             <mat-icon class="!text-[20px]">close</mat-icon>

@@ -18,28 +18,30 @@ import { SystemInstructionModal } from './system-instruction-modal';
   template: `
     <div class="flex flex-col h-[100dvh] bg-gemini-bg font-sans overflow-hidden">
       <!-- Header -->
-      <header class="flex items-center justify-between px-4 py-2 border-b border-gemini-border shrink-0 bg-gemini-bg z-20">
-        <div class="max-w-[1200px] mx-auto w-full flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <button 
-              (click)="toggleSidebar()"
-              class="w-10 h-10 flex items-center justify-center rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 active:bg-blue-500/20 active:ring-1 active:ring-blue-500/40 transition-all font-medium"
-              id="sidebar-toggle-btn"
-            >
-              <mat-icon>{{ isSidebarOpen() ? 'close' : 'menu' }}</mat-icon>
-            </button>
-            
+      @if (!gemini.viewingImage()) {
+        <header class="flex items-center justify-between px-4 py-2 border-b border-gemini-border shrink-0 bg-gemini-bg z-20 animate-in fade-in duration-300">
+          <div class="max-w-[1200px] mx-auto w-full flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <button 
+                (click)="toggleSidebar()"
+                class="w-10 h-10 flex items-center justify-center rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 active:bg-blue-500/20 active:ring-1 active:ring-blue-500/40 transition-all font-medium"
+                id="sidebar-toggle-btn"
+              >
+                <mat-icon>{{ isSidebarOpen() ? 'close' : 'menu' }}</mat-icon>
+              </button>
+              
+              <div class="flex items-center gap-2">
+                @if (gemini.chatHistory().length > 0) {
+                  <span class="text-sm font-medium text-zinc-300 animate-in fade-in duration-300">Superintelligence</span>
+                }
+              </div>
+            </div>
+  
             <div class="flex items-center gap-2">
-              @if (gemini.chatHistory().length > 0) {
-                <span class="text-sm font-medium text-zinc-300 animate-in fade-in duration-300">Superintelligence</span>
-              }
             </div>
           </div>
-
-          <div class="flex items-center gap-2">
-          </div>
-        </div>
-      </header>
+        </header>
+      }
 
       <!-- Sidebar -->
       @if (isSidebarOpen()) {
@@ -115,6 +117,35 @@ import { SystemInstructionModal } from './system-instruction-modal';
           (closeModal)="isSystemInstructionModalOpen.set(false)"
         ></app-system-instruction-modal>
       }
+
+      <!-- Image Viewer Overlay -->
+      @if (gemini.viewingImage(); as imageUrl) {
+        <div 
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 animate-in fade-in duration-300 backdrop-blur-sm cursor-zoom-out"
+          role="button"
+          tabindex="0"
+          (click)="gemini.viewingImage.set(null)"
+          (keydown.enter)="gemini.viewingImage.set(null)"
+          (keydown.space)="gemini.viewingImage.set(null)"
+          aria-label="Fechar visualização"
+        >
+          <button 
+            (click)="gemini.viewingImage.set(null)"
+            class="absolute top-6 right-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors z-50"
+            aria-label="Fechar"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+          
+          <img 
+            [src]="imageUrl" 
+            alt="Visualização da imagem ampliada"
+            class="max-w-full max-h-full object-contain p-4 animate-in zoom-in duration-300 select-none shadow-2xl"
+            (click)="$event.stopPropagation()"
+            role="presentation"
+          >
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -146,8 +177,8 @@ export class ChatView {
   isSystemInstructionModalOpen = signal(false);
   isSidebarOpen = signal(false);
 
-  sendMessage(prompt: string) {
-    this.gemini.sendMessage(prompt);
+  sendMessage(event: { prompt: string, images?: { data: string, mimeType: string }[] }) {
+    this.gemini.sendMessage(event.prompt, event.images);
   }
 
   saveApiKey(key: string) {

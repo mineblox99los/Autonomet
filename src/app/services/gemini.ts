@@ -16,6 +16,7 @@ export interface GroundingMetadata {
 export interface Message {
   role: 'user' | 'model';
   parts: string;
+  images?: { data: string, mimeType: string }[];
   thinking?: string;
   responseTime?: number;
   groundingMetadata?: GroundingMetadata;
@@ -26,6 +27,14 @@ export interface ChatSession {
   title: string;
   messages: Message[];
   createdAt: number;
+}
+
+export interface Part {
+  text?: string;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
 }
 
 @Injectable({
@@ -128,6 +137,7 @@ export class GeminiService {
   isLoading = signal(false);
   elapsedTime = signal(0);
   workingStatus = signal<string>('Working');
+  viewingImage = signal<string | null>(null);
   private timerInterval?: ReturnType<typeof setInterval>;
 
   async validateApiKey(key: string) {
@@ -161,8 +171,8 @@ export class GeminiService {
     };
   }
 
-  async sendMessage(prompt: string) {
-    if (!prompt.trim() || this.isLoading()) return;
+  async sendMessage(prompt: string, images?: { data: string, mimeType: string }[]) {
+    if ((!prompt.trim() && (!images || images.length === 0)) || this.isLoading()) return;
     if (!this.isBrowser()) return;
 
     const trimmedPrompt = prompt.trim();
@@ -193,14 +203,31 @@ export class GeminiService {
       }
     }, 100);
     
-    const userMessage: Message = { role: 'user', parts: trimmedPrompt };
+    const userMessage: Message = { 
+      role: 'user', 
+      parts: trimmedPrompt,
+      images: images 
+    };
     this.chatHistory.update(history => [...history, userMessage]);
 
     try {
-      const chatHistory = this.chatHistory().slice(0, -1).map(m => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.parts }]
-      }));
+      const chatHistory = this.chatHistory().slice(0, -1).map(m => {
+        const parts: Part[] = [{ text: m.parts }];
+        if (m.images) {
+          m.images.forEach(img => {
+            parts.push({
+              inlineData: {
+                data: img.data.split(',')[1],
+                mimeType: img.mimeType
+              }
+            });
+          });
+        }
+        return {
+          role: m.role === 'user' ? 'user' : 'model',
+          parts: parts
+        };
+      });
 
       const modelMessage: Message = { 
         role: 'model', 
@@ -210,12 +237,25 @@ export class GeminiService {
 
       const isSearchEnabled = this.isGoogleSearchEnabled();
       
+      // Prepare contents for current message
+      const currentParts: Part[] = [{ text: trimmedPrompt }];
+      if (images) {
+        images.forEach(img => {
+          currentParts.push({
+            inlineData: {
+              data: img.data.split(',')[1],
+              mimeType: img.mimeType
+            }
+          });
+        });
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: this.getSelectedModel(),
-          contents: trimmedPrompt,
+          contents: currentParts,
           config: {
             systemInstruction: smartConfig.systemInstruction,
             tools: [
