@@ -33,6 +33,81 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /**
+ * Gemini API Proxy
+ */
+const ai = new GoogleGenAI({
+  apiKey: process.env['GEMINI_API_KEY'] || '',
+  httpOptions: {
+    headers: {
+      'User-Agent': 'aistudio-build',
+    }
+  }
+});
+
+app.post('/api/chat', async (req, res) => {
+  const { model, contents, config, history, customApiKey } = req.body;
+
+  try {
+    let clientAi = ai;
+    if (customApiKey) {
+      clientAi = new GoogleGenAI({
+        apiKey: customApiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+    }
+
+    const chat = clientAi.chats.create({
+      model: model || 'gemini-3-flash-preview',
+      config: config,
+      history: history || []
+    });
+
+    const result = await chat.sendMessageStream({ message: contents });
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    for await (const chunk of result) {
+      res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+
+  } catch (error: any) {
+    console.error('Gemini Error:', error);
+    res.status(500).json({ error: error.message || 'Internal Server Error', details: error });
+    return;
+  }
+});
+
+app.post('/api/validate-key', async (req, res) => {
+  const { key } = req.body;
+  if (!key) {
+    res.status(400).json({ valid: false, error: 'Chave obrigatória.' });
+    return;
+  }
+
+  try {
+    const aiTest = new GoogleGenAI({ apiKey: key });
+    await aiTest.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [{ role: 'user', parts: [{ text: 'hi' }] }]
+    });
+    res.json({ valid: true });
+    return;
+  } catch (error: any) {
+    res.json({ valid: false, error: 'Chave inválida.', debug: error.message });
+    return;
+  }
+});
+
+/**
  * Serve static files from browser folder
  */
 app.use(

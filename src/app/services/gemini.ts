@@ -1,7 +1,6 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
-import { GoogleGenAI } from '@google/genai';
 
 export interface GroundingChunk {
   web?: {
@@ -148,21 +147,20 @@ Observação Crítica: Jamais utilize blocos de código Markdown (\` \` \`) dent
     if (!this.isBrowser()) return { valid: false, error: 'Apenas navegador.' };
     
     try {
-      const ai = new GoogleGenAI({ apiKey: key });
-      
-      // Minimal test request
-      await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [{ role: 'user', parts: [{ text: 'hi' }] }]
+      const response = await fetch('/api/validate-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key })
       });
       
-      return { valid: true };
+      const result = await response.json();
+      return result;
     } catch (e: unknown) {
       console.error('Validation error:', e);
       const error = e as { message?: string };
       return { 
         valid: false, 
-        error: 'Chave de API inválida ou erro na conexão com o Gemini.',
+        error: 'Erro na conexão com o servidor.',
         debug: error.message || e
       };
     }
@@ -210,15 +208,6 @@ Observação Crítica: Jamais utilize blocos de código Markdown (\` \` \`) dent
     if (!prompt.trim() || this.isLoading()) return;
     if (!this.isBrowser()) return;
 
-    const apiKey = this.userApiKey();
-    if (!apiKey) {
-      this.chatHistory.update(history => [...history, { 
-        role: 'model', 
-        parts: 'Por favor, configure sua chave de API nas configurações.' 
-      }]);
-      return;
-    }
-
     const trimmedPrompt = prompt.trim();
     this.isLoading.set(true);
     this.elapsedTime.set(0);
@@ -251,8 +240,6 @@ Observação Crítica: Jamais utilize blocos de código Markdown (\` \` \`) dent
     this.chatHistory.update(history => [...history, userMessage]);
 
     try {
-      const ai = new GoogleGenAI({ apiKey });
-      
       const chatHistory = this.chatHistory().slice(0, -1).map(m => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.parts }]
@@ -264,50 +251,83 @@ Observação Crítica: Jamais utilize blocos de código Markdown (\` \` \`) dent
       };
       this.chatHistory.update(history => [...history, modelMessage]);
 
-      const chat = ai.chats.create({
-        model: this.getSelectedModel(),
-        config: {
-          systemInstruction: smartConfig.systemInstruction,
-          tools: [
-            ...(this.isGoogleSearchEnabled() ? [{ googleSearch: {} }] : []),
-            { codeExecution: {} }
-          ],
-          temperature: smartConfig.temperature,
-          topP: smartConfig.topP,
-          topK: 40,
-          maxOutputTokens: 65536,
-        },
-        history: chatHistory
+      const isSearchEnabled = this.isGoogleSearchEnabled();
+      
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: this.getSelectedModel(),
+          contents: trimmedPrompt,
+          config: {
+            systemInstruction: smartConfig.systemInstruction,
+            tools: [
+              ...(isSearchEnabled ? [{ googleSearch: {} }] : []),
+              { codeExecution: {} }
+            ],
+            // Required when combining multiple server-side tools
+            toolConfig: isSearchEnabled ? { includeServerSideToolInvocations: true } : undefined,
+            temperature: smartConfig.temperature,
+            topP: smartConfig.topP,
+            topK: 40,
+            maxOutputTokens: 65536,
+          },
+          history: chatHistory,
+          customApiKey: this.userApiKey()
+        })
       });
 
-      const result = await chat.sendMessageStream({ message: trimmedPrompt });
-      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro na comunicação com o servidor.');
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Não foi possível obter o stream de resposta.');
+
+      const decoder = new TextDecoder();
       let accumulatedText = '';
       let chunksReceived = 0;
       
-      for await (const chunk of result) {
-        const chunkText = chunk.text || '';
-        accumulatedText += chunkText;
-        
-        chunksReceived++;
-        if (chunksReceived === 1) {
-          this.workingStatus.set('Responding...');
-          if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = undefined;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunkLines = decoder.decode(value).split('\n');
+        for (const line of chunkLines) {
+          if (!line.startsWith('data: ')) continue;
+          
+          const data = line.substring(6).trim();
+          if (data === '[DONE]') break;
+
+          try {
+            const chunk = JSON.parse(data);
+            const chunkText = chunk.text || '';
+            accumulatedText += chunkText;
+            
+            chunksReceived++;
+            if (chunksReceived === 1) {
+              this.workingStatus.set('Responding...');
+              if (this.timerInterval) {
+                clearInterval(this.timerInterval);
+                this.timerInterval = undefined;
+              }
+            }
+
+            this.chatHistory.update(history => {
+              const lastIndex = history.length - 1;
+              const updatedHistory = [...history];
+              updatedHistory[lastIndex] = { 
+                ...updatedHistory[lastIndex], 
+                parts: accumulatedText,
+                groundingMetadata: (chunk.candidates?.[0]?.groundingMetadata) as GroundingMetadata
+              };
+              return updatedHistory;
+            });
+          } catch {
+            // Ignore incomplete JSON chunks
           }
         }
-
-        this.chatHistory.update(history => {
-          const lastIndex = history.length - 1;
-          const updatedHistory = [...history];
-          updatedHistory[lastIndex] = { 
-            ...updatedHistory[lastIndex], 
-            parts: accumulatedText,
-            groundingMetadata: (chunk.candidates?.[0]?.groundingMetadata as unknown) as GroundingMetadata
-          };
-          return updatedHistory;
-        });
       }
 
       const endTime = performance.now();
