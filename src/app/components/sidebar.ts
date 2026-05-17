@@ -82,7 +82,7 @@ import { ChatSession } from '../services/gemini';
           (click)="closeSidebar.emit()"
         >
           <mat-icon class="scale-75 text-blue-400">help_outline</mat-icon>
-          <span>Guia de Configuração</span>
+          <span>Guia do Gemini 3</span>
         </a>
 
         <!-- Dropdown Menu -->

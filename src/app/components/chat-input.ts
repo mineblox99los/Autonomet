@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { Component, ChangeDetectionStrategy, output, input, signal, HostListener, inject, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, output, input, signal, HostListener, inject, computed, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { ReactiveFormsModule, FormControl } from '@angular/forms';
@@ -97,24 +96,6 @@ import { GeminiService } from '../services/gemini';
                   >
                     Gerenciar Chave
                   </button>
-
-                  <div class="border-t border-gemini-border pt-3 mt-1">
-                    <div class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest leading-none mb-2 italic">Capacidade de Raciocínio (Gemini 3)</div>
-                    <div class="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
-                      @for (level of thinkingLevels; track level) {
-                        <button 
-                          (click)="gemini.setThinkingLevel(level)"
-                          class="px-2 py-1.5 rounded-lg text-[9px] font-bold transition-all whitespace-nowrap flex-1"
-                          [class.bg-blue-500]="gemini.thinkingLevel() === level"
-                          [class.text-white]="gemini.thinkingLevel() === level"
-                          [class.bg-white/5]="gemini.thinkingLevel() !== level"
-                          [class.text-zinc-500]="gemini.thinkingLevel() !== level"
-                        >
-                          {{ level.toUpperCase() }}
-                        </button>
-                      }
-                    </div>
-                  </div>
                 </div>
               </div>
             }
@@ -122,15 +103,25 @@ import { GeminiService } from '../services/gemini';
             <div class="relative">
               <button 
                 (click)="toggleMic($event)"
-                class="w-8 h-8 flex items-center justify-center rounded-full transition-all"
-                [class.text-blue-400]="isRecording()"
-                [class.bg-blue-500/10]="isRecording()"
+                class="w-10 h-8 flex items-center justify-center rounded-full transition-all relative overflow-hidden"
+                [class.text-red-600]="isRecording()"
+                [class.bg-red-500/10]="isRecording()"
                 [class.text-zinc-400]="!isRecording()"
                 [class.hover:bg-white/5]="!isRecording()"
-                [class.animate-pulse-blue]="isRecording()"
                 id="mic-button"
               >
-                <mat-icon class="scale-90">{{ isRecording() ? 'mic' : 'mic_none' }}</mat-icon>
+                @if (isRecording()) {
+                  <div class="flex items-center justify-center gap-[2.5px] h-6 w-full px-1">
+                    @for (level of audioLevels(); track $index) {
+                      <div 
+                        class="w-[3px] bg-red-500 rounded-full transition-all duration-75 ease-out"
+                        [style.height.px]="4 + (level * 20)"
+                      ></div>
+                    }
+                  </div>
+                } @else {
+                  <mat-icon class="scale-90">mic_none</mat-icon>
+                }
               </button>
               
               @if (isMicNotSupportedOpen()) {
@@ -179,7 +170,7 @@ import { GeminiService } from '../services/gemini';
     }
   `
 })
-export class ChatInput {
+export class ChatInput implements OnDestroy {
   gemini = inject(GeminiService);
   isLoading = input<boolean>(false);
   hasCustomKey = input<boolean>(false);
@@ -188,52 +179,64 @@ export class ChatInput {
   send = output<{ prompt: string, images?: { data: string, mimeType: string }[] }>();
   openApiKeyModal = output<void>();
   openSystemInstructionModal = output<void>();
-
+  
   promptControl = new FormControl('');
   selectedImages = signal<{ data: string, mimeType: string }[]>([]);
   previewState = signal<{ index: number, data: string } | null>(null);
   isMicNotSupportedOpen = signal(false);
   isRecording = signal(false);
   isDropdownOpen = signal(false);
-  thinkingLevels = ['minimal', 'low', 'medium', 'high'] as const;
+  audioLevels = signal<number[]>([0, 0, 0, 0, 0]);
   
-  private recognition: any;
+  private recognition: SpeechRecognition | null = null;
+  private audioCtx?: AudioContext;
+  private analyser?: AnalyserNode;
+  private stream?: MediaStream;
+  private animationId?: number;
 
   constructor() {
     this.setupSpeechRecognition();
   }
 
+  ngOnDestroy() {
+    this.stopAudioLevelDetection();
+  }
+
   private setupSpeechRecognition() {
     if (typeof window === 'undefined') return;
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      this.recognition = new SpeechRecognition();
-      this.recognition.continuous = false;
-      this.recognition.interimResults = true;
-      this.recognition.lang = 'pt-BR';
+    const SpeechRecognitionVar = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognitionVar) {
+      this.recognition = new SpeechRecognitionVar();
+      if (this.recognition) {
+        this.recognition.continuous = false;
+        this.recognition.interimResults = true;
+        this.recognition.lang = 'pt-BR';
 
-      this.recognition.onstart = () => {
-        this.isRecording.set(true);
-      };
+        this.recognition.onstart = () => {
+          this.isRecording.set(true);
+        };
 
-      this.recognition.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0])
-          .map((result: any) => result.transcript)
-          .join('');
-        
-        this.promptControl.setValue(transcript);
-      };
+        this.recognition.onresult = (event: SpeechRecognitionEvent) => {
+          const transcript = Array.from(event.results)
+            .map((result) => result[0])
+            .map((result) => result.transcript)
+            .join('');
+          
+          this.promptControl.setValue(transcript);
+        };
 
-      this.recognition.onerror = (event: any) => {
-        console.error('Speech recognition error', event.error);
-        this.isRecording.set(false);
-      };
+        this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+          console.error('Speech recognition error', event.error);
+          this.isRecording.set(false);
+          this.stopAudioLevelDetection();
+        };
 
-      this.recognition.onend = () => {
-        this.isRecording.set(false);
-      };
+        this.recognition.onend = () => {
+          this.isRecording.set(false);
+          this.stopAudioLevelDetection();
+        };
+      }
     }
   }
 
@@ -261,8 +264,9 @@ export class ChatInput {
     }
   }
 
-  async onFileSelected(event: any) {
-    const files = event.target.files as FileList;
+  async onFileSelected(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const files = target.files;
     if (!files) return;
 
     const currentCount = this.selectedImages().length;
@@ -287,7 +291,7 @@ export class ChatInput {
       reader.readAsDataURL(file);
     }
     // Clear input so same file can be selected again
-    event.target.value = '';
+    target.value = '';
   }
 
   removeImage(index: number) {
@@ -317,14 +321,84 @@ export class ChatInput {
 
     if (this.isRecording()) {
       this.recognition.stop();
+      this.stopAudioLevelDetection();
     } else {
       this.closeAllDropdowns();
       try {
         this.recognition.start();
+        this.startAudioLevelDetection();
       } catch (e) {
         console.error('Failed to start recognition', e);
       }
     }
+  }
+
+  private async startAudioLevelDetection() {
+    if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) return;
+
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = this.audioCtx.createMediaStreamSource(this.stream);
+      this.analyser = this.audioCtx.createAnalyser();
+      this.analyser.fftSize = 128; // Higher resolution
+      this.analyser.smoothingTimeConstant = 0.7; // Even smoother transitions for leveling
+      source.connect(this.analyser);
+
+      const bufferLength = this.analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const update = () => {
+        if (!this.isRecording()) return;
+
+        this.analyser?.getByteFrequencyData(dataArray);
+        
+        // Take 3 values from the frequency data and map them symmetrically to 5 bars
+        const rawLevels = [];
+        const selectionCount = 3; // We'll take 3 frequency points
+        for (let i = 0; i < selectionCount; i++) {
+          // Skip first bin (index 0) to avoid DC offset/noise
+          // Use indices 1, 3, 5 for a good spread within speech range
+          const index = 1 + (i * 2); 
+          const value = dataArray[index] / 255;
+          
+          // Apply a small boost to higher frequencies for visual balance
+          const boosted = value * (1 + i * 0.15);
+          rawLevels.push(Math.min(boosted, 1));
+        }
+
+        // Symmetrical mapping: [Level2, Level1, Level0, Level1, Level2]
+        const levels = [
+          rawLevels[2], 
+          rawLevels[1], 
+          rawLevels[0], 
+          rawLevels[1], 
+          rawLevels[2]
+        ];
+
+        this.audioLevels.set(levels);
+        this.animationId = requestAnimationFrame(update);
+      };
+
+      update();
+    } catch (e) {
+      console.error('Audio detection error:', e);
+    }
+  }
+
+  private stopAudioLevelDetection() {
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = undefined;
+    }
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+      this.stream = undefined;
+    }
+    if (this.audioCtx?.state !== 'closed') {
+      this.audioCtx?.close();
+    }
+    this.audioLevels.set([0, 0, 0, 0, 0]);
   }
 
   toggleDropdown(event: Event) {

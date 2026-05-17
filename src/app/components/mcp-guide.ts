@@ -52,6 +52,51 @@ import { RouterLink } from '@angular/router';
             </p>
           </section>
 
+          <section class="mb-12">
+            <h2 class="text-white">Especificações do Gemini 3 Flash Preview</h2>
+            <p class="text-sm text-zinc-400 mb-4">O Gemini 3 Flash Preview é o modelo mais avançado para compreensão multimodal e raciocínio de última geração.</p>
+            <div class="overflow-x-auto bg-black/20 rounded-2xl border border-gemini-border">
+              <table class="w-full text-sm text-left text-zinc-400 border-separate border-spacing-0">
+                <thead class="text-zinc-500 uppercase text-[10px] tracking-widest bg-white/5">
+                  <tr>
+                    <th class="py-3 px-6 font-bold border-b border-gemini-border">Propriedade</th>
+                    <th class="py-3 px-6 font-bold border-b border-gemini-border">Descrição</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gemini-border">
+                  <tr>
+                    <td class="py-4 px-6 font-medium text-zinc-300 whitespace-nowrap">Model code</td>
+                    <td class="py-4 px-6 font-mono text-blue-400">gemini-3-flash-preview</td>
+                  </tr>
+                  <tr>
+                    <td class="py-4 px-6 font-medium text-zinc-300">Tipos de dados</td>
+                    <td class="py-4 px-6">
+                      <span class="text-zinc-500 uppercase text-[10px] font-bold block mb-1">Entradas</span>
+                      Texto, Imagem, Vídeo, Áudio e PDF
+                      <span class="text-zinc-500 uppercase text-[10px] font-bold block mt-2 mb-1">Saída</span>
+                      Texto
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="py-4 px-6 font-medium text-zinc-300">Limites de tokens</td>
+                    <td class="py-4 px-6">
+                      <div class="flex flex-col gap-1">
+                        <div><strong class="text-zinc-300">Entrada:</strong> 1.048.576</div>
+                        <div><strong class="text-zinc-300">Saída:</strong> 65.536</div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="py-4 px-6 font-medium text-zinc-300">Capacidades</td>
+                    <td class="py-4 px-6 leading-relaxed">
+                      Batch API, Caching, Code execution, Computer use, File search, Function calling, Grounding with Google Maps, Search grounding, Structured outputs, <strong class="text-blue-400">Thinking</strong>, URL context.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
           <section class="mb-12 border-b border-gemini-border pb-12">
             <h2 class="text-white">
               Adicione Skills de Desenvolvimento
@@ -88,48 +133,6 @@ import { RouterLink } from '@angular/router';
                 <div class="p-3 bg-black/40 rounded-xl border border-white/5">
                   <span class="text-[10px] uppercase tracking-wider text-zinc-500 block mb-2 font-bold">Instalar com Context7</span>
                   <code class="text-xs text-blue-400">npx ctx7 skills install /google-gemini/gemini-skills gemini-live-api-dev</code>
-                </div>
-              </div>
-            </div>
-
-            <!-- gemini-interactions-api -->
-            <div class="border border-gemini-border rounded-2xl p-6 mb-6 hover:bg-white/5 transition-colors">
-              <h3 class="text-white mt-0">gemini-interactions-api</h3>
-              <p class="text-sm text-zinc-400">Skill para construir apps com a Interactions API. Interface unificada para interagir com modelos e agentes.</p>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div class="p-3 bg-black/40 rounded-xl border border-white/5">
-                  <span class="text-[10px] uppercase tracking-wider text-zinc-500 block mb-2 font-bold">Instalar com skills.sh</span>
-                  <code class="text-xs text-emerald-400">npx skills add google-gemini/gemini-skills --skill gemini-interactions-api --global</code>
-                </div>
-                <div class="p-3 bg-black/40 rounded-xl border border-white/5">
-                  <span class="text-[10px] uppercase tracking-wider text-zinc-500 block mb-2 font-bold">Instalar com Context7</span>
-                  <code class="text-xs text-blue-400">npx ctx7 skills install /google-gemini/gemini-skills gemini-interactions-api</code>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- Separate Section for Function Calling -->
-          <section class="mb-12 pt-8">
-            <div class="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-6 mb-6">
-              <div class="mb-4">
-                <h3 class="text-white m-0 text-xl font-bold">Function Calling & Tools</h3>
-              </div>
-              <p class="text-sm text-indigo-100/70 leading-relaxed mb-6">
-                Nossa plataforma agora suporta <strong>Chamadas de Função nativas</strong>. O modelo pode decidir usar ferramentas externas para recuperar dados em tempo real ou executar ações.
-              </p>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="space-y-1">
-                  <span class="text-sm font-bold text-white block">Previsão do Tempo</span>
-                  <span class="text-xs text-zinc-500 italic block">"Como está o tempo em Lisboa?"</span>
-                </div>
-                <div class="space-y-1">
-                  <span class="text-sm font-bold text-white block">Agendamento de Reuniões</span>
-                  <span class="text-xs text-zinc-500 italic block">"Agende uma reunião amanhã às 10h"</span>
-                </div>
-                <div class="space-y-1">
-                  <span class="text-sm font-bold text-white block">MCP Simulator</span>
-                  <span class="text-xs text-zinc-500 italic block">Status de infraestrutura via MCP</span>
                 </div>
               </div>
             </div>

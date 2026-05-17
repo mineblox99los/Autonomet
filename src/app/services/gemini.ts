@@ -51,22 +51,23 @@ export class GeminiService {
   isGoogleSearchEnabled = signal<boolean>(this.isBrowser() ? localStorage.getItem('google_search_enabled') === 'true' : false);
   systemInstruction = signal<string>(this.isBrowser() ? localStorage.getItem('user_system_instruction') || '' : '');
   responseSchema = signal<string>(this.isBrowser() ? localStorage.getItem('gemini_response_schema') || '' : '');
-  thinkingLevel = signal<'minimal' | 'low' | 'medium' | 'high'>(this.isBrowser() ? (localStorage.getItem('gemini_thinking_level') as any) || 'low' : 'low');
   
   // New Skills Toggles
   enabledSkills = signal<{
     apiDev: boolean;
     liveApi: boolean;
-    interactions: boolean;
     structuredOutput: boolean;
-  }>(this.isBrowser() ? this.loadEnabledSkills() : { apiDev: false, liveApi: false, interactions: false, structuredOutput: false });
+  }>(this.isBrowser() ? this.loadEnabledSkills() : { apiDev: false, liveApi: false, structuredOutput: false });
 
   private loadEnabledSkills() {
     const saved = localStorage.getItem('gemini_enabled_skills');
-    return saved ? JSON.parse(saved) : { apiDev: false, liveApi: false, interactions: false, structuredOutput: false };
+    const skills = saved ? JSON.parse(saved) : { apiDev: false, liveApi: false, structuredOutput: false };
+    // Migration: remove interactions if present
+    delete skills.interactions;
+    return skills;
   }
 
-  toggleSkill(skill: 'apiDev' | 'liveApi' | 'interactions' | 'structuredOutput') {
+  toggleSkill(skill: 'apiDev' | 'liveApi' | 'structuredOutput') {
     this.enabledSkills.update(prev => {
       const next = { ...prev, [skill]: !prev[skill] };
       if (this.isBrowser()) {
@@ -95,13 +96,6 @@ export class GeminiService {
     this.responseSchema.set(schema);
     if (this.isBrowser()) {
       localStorage.setItem('gemini_response_schema', schema);
-    }
-  }
-
-  setThinkingLevel(level: 'minimal' | 'low' | 'medium' | 'high') {
-    this.thinkingLevel.set(level);
-    if (this.isBrowser()) {
-      localStorage.setItem('gemini_thinking_level', level);
     }
   }
 
@@ -184,6 +178,7 @@ export class GeminiService {
   elapsedTime = signal(0);
   workingStatus = signal<string>('Working');
   viewingImage = signal<string | null>(null);
+  thinkingLevel = signal<'HIGH' | 'LOW' | 'MINIMAL'>('HIGH');
   private timerInterval?: ReturnType<typeof setInterval>;
 
   async validateApiKey(key: string) {
@@ -225,13 +220,10 @@ export class GeminiService {
     // Add Skill-specific instructions if enabled
     const skills = this.enabledSkills();
     if (skills.apiDev) {
-      combinedInstruction += `\n\n[SKILL: gemini-api-dev]\nVocê é um especialista em API do Gemini. Priorize o uso das versões mais recentes dos modelos (Gemini 1.5 Pro/Flash). Foque em padrões de prompts multimodais, chamadas de função e saídas estruturadas.`;
+      combinedInstruction += `\n\n[SKILL: gemini-api-dev]\nVocê é um especialista em API do Gemini. Priorize o uso das versões mais recentes dos modelos (Gemini 3 Flash). Foque em padrões de prompts multimodais, chamadas de função e saídas estruturadas.`;
     }
     if (skills.liveApi) {
       combinedInstruction += `\n\n[SKILL: gemini-live-api-dev]\nVocê é um especialista em Gemini Live API. Forneça orientações sobre conexões WebSocket, streaming de baixa latência e detecção de atividade de voz (VAD).`;
-    }
-    if (skills.interactions) {
-      combinedInstruction += `\n\n[SKILL: gemini-interactions-api]\nVocê é um especialista em Interactions API. Domine os conceitos de estados de conversação no servidor, execuções em segundo plano e agentes de Deep Research.`;
     }
 
     return {
@@ -328,61 +320,25 @@ export class GeminiService {
           contents: currentParts,
           config: {
             systemInstruction: smartConfig.systemInstruction,
-            thinkingLevel: this.thinkingLevel(),
             tools: [
-              ...(isSearchEnabled ? [{ googleSearch: {} }] : []),
-              { codeExecution: {} },
-              {
-                functionDeclarations: [
-                  {
-                    name: 'get_weather',
-                    description: 'Gets the current weather for a given location.',
-                    parameters: {
-                      type: 'object',
-                      properties: {
-                        location: { type: 'string', description: 'The city and state, e.g. San Francisco, CA' }
-                      },
-                      required: ['location']
-                    }
-                  },
-                  {
-                    name: 'schedule_meeting',
-                    description: 'Schedules a meeting with specified attendees at a given time and date.',
-                    parameters: {
-                      type: 'object',
-                      properties: {
-                        attendees: { type: 'array', items: { type: 'string' } },
-                        date: { type: 'string', description: 'Date (e.g., "2024-07-29")' },
-                        time: { type: 'string', description: 'Time (e.g., "15:00")' },
-                        topic: { type: 'string', description: 'The meeting topic.' }
-                      },
-                      required: ['attendees', 'date', 'time', 'topic']
-                    }
-                  }
-                ]
-              },
-              // Demo MCP Server (Will show in request, but might be skipped by model if not gemini-2.5)
-              {
-                type: 'mcp_server',
-                name: 'Deployment Tracker',
-                url: 'https://mcp.example.com/mcp',
-                headers: { Authorization: 'Bearer demo-token' }
-              }
+              ...(isSearchEnabled ? [{ googleSearch: {} }] : [])
             ],
+            thinkingConfig: {
+              thinkingLevel: this.thinkingLevel()
+            },
             // Required when combining multiple server-side tools
-            toolConfig: isSearchEnabled ? { includeServerSideToolInvocations: true } : undefined,
+            tool_config: isSearchEnabled ? { include_server_side_tool_invocations: true } : undefined,
             temperature: smartConfig.temperature,
             topP: smartConfig.topP,
             topK: 40,
             maxOutputTokens: 65536,
-            responseFormat: this.enabledSkills().structuredOutput && this.responseSchema() ? {
+            response_format: this.enabledSkills().structuredOutput && this.responseSchema() ? {
               type: 'text',
-              mime_type: 'application/json',
-              schema: JSON.parse(this.responseSchema())
+              response_mime_type: 'application/json',
+              response_schema: JSON.parse(this.responseSchema())
             } : undefined
           },
-          history: this.interactionId() ? undefined : chatHistory,
-          interactionId: this.interactionId(),
+          history: chatHistory,
           customApiKey: this.userApiKey()
         })
       });
@@ -425,7 +381,6 @@ export class GeminiService {
       let currentThinking = '';
       let chunksReceived = 0;
       let buffer = '';
-      const pendingFunctionCalls: any[] = [];
       
       while (true) {
         const { done, value } = await reader.read();
@@ -442,125 +397,34 @@ export class GeminiService {
           if (data === '[DONE]') break;
 
           try {
-            if (data === '[DONE]') break;
             const chunk = JSON.parse(data);
-            
-            // Handle Interaction API response format
-            if (chunk.interaction_id) {
-              this.interactionId.set(chunk.interaction_id);
-            }
-            if (chunk.event_type === 'interaction.created' && chunk.interaction?.id) {
-              this.interactionId.set(chunk.interaction.id);
-            }
-
             let groundingMetadata: GroundingMetadata | undefined;
 
-            // 1. Handle step.delta (streaming text/thoughts)
-            if (chunk.event_type === 'step.delta' && chunk.delta) {
-              const delta = chunk.delta;
-              if (delta.type === 'text' && delta.text) {
-                accumulatedText += delta.text;
-              } else if (delta.type === 'thought' || delta.type === 'thought_summary') {
-                const thoughtText = delta.content?.text || delta.text || '';
-                if (thoughtText) currentThinking += thoughtText;
-              } else if (delta.content?.text) {
-                accumulatedText += delta.content.text;
-              } else if (delta.parts) {
-                accumulatedText += delta.parts.map((p: any) => p.text || '').join('');
-              }
-            } 
-            // 2. Handle step.start / step.stop
-            else if (chunk.step) {
-              const step = chunk.step;
-              const stepActual = step.step || step;
-
-              // Store all steps
-              this.chatHistory.update(history => {
-                const last = history[history.length - 1];
-                const steps = last.steps || [];
-                // Check if step already exists by ID
-                if (!steps.find((s: any) => s.id === stepActual.id)) {
-                  last.steps = [...steps, stepActual];
-                }
-                return [...history];
-              });
-
-              if (stepActual.type === 'function_call') {
-                if (!pendingFunctionCalls.find(fc => fc.id === stepActual.id)) {
-                  pendingFunctionCalls.push(stepActual);
-                }
-              }
+            if (chunk.candidates?.[0]?.content?.parts) {
+              const parts = chunk.candidates[0].content.parts;
               
-              if ((stepActual.type === 'thought' || stepActual.step_type === 'thought')) {
-                const summary = stepActual.summary || stepActual.thought;
-                if (Array.isArray(summary)) {
-                  currentThinking = summary.map((p: any) => p.text || '').join('');
-                } else if (typeof summary === 'string') {
-                  currentThinking = summary;
-                } else if (summary && summary.text) {
-                  currentThinking = summary.text;
-                }
-              } else if ((stepActual.type === 'model_output' || stepActual.step_type === 'model_output')) {
-                const content = stepActual.content || stepActual.model_output?.parts || stepActual.parts || stepActual.model_output;
-                if (Array.isArray(content)) {
-                  const text = content.map((p: any) => p.text || '').join('');
-                  if (text) accumulatedText = text;
-                } else if (content && typeof content === 'object') {
-                  const text = (content as any).parts?.map((p: any) => p.text || '').join('') || (content as any).text || '';
-                  if (text) accumulatedText = text;
-                }
-                if (stepActual.model_output?.grounding_metadata) {
-                  groundingMetadata = stepActual.model_output.grounding_metadata as GroundingMetadata;
-                }
-              }
-            }
-            // 3. Handle interaction.completed (final sync)
-            else if (chunk.event_type === 'interaction.completed' && chunk.interaction?.steps) {
-              const steps = chunk.interaction.steps;
-              const modelOutputStep = steps.find((s: any) => s.type === 'model_output' || s.step_type === 'model_output' || s.model_output);
-              const thoughtStep = steps.find((s: any) => s.type === 'thought' || s.step_type === 'thought' || s.thought);
-
-              if (modelOutputStep) {
-                const content = modelOutputStep.content || modelOutputStep.model_output?.parts || modelOutputStep.parts || modelOutputStep.model_output;
-                if (Array.isArray(content)) {
-                  const text = content.map((p: any) => p.text || '').join('');
-                  if (text) accumulatedText = text;
-                } else if (content && typeof content === 'object') {
-                  const text = (content as any).parts?.map((p: any) => p.text || '').join('') || (content as any).text || '';
-                  if (text) accumulatedText = text;
-                }
-                if (modelOutputStep.model_output?.grounding_metadata) {
-                  groundingMetadata = modelOutputStep.model_output.grounding_metadata as GroundingMetadata;
-                }
-              }
-              if (thoughtStep) {
-                const summary = thoughtStep.summary || thoughtStep.thought || thoughtStep.content;
-                if (Array.isArray(summary)) {
-                  currentThinking = summary.map((p: any) => p.text || '').join('');
-                } else if (typeof summary === 'string') {
-                  currentThinking = summary;
-                } else if (summary && summary.text) {
-                  currentThinking = summary.text;
-                }
-              }
-            } 
-            // 4. Fallback for standard generateContent candidates
-            else if (chunk.candidates?.[0]?.content?.parts) {
-              const text = chunk.candidates[0].content.parts
+              const text = parts
                 .map((p: { text?: string }) => p.text || '')
                 .join('');
+              
+              const thought = parts
+                .map((p: { thought?: string }) => p.thought || '')
+                .join('');
+
               if (text) accumulatedText += text;
+              if (thought) currentThinking += thought;
+              
               groundingMetadata = chunk.candidates[0].groundingMetadata as GroundingMetadata;
-            } 
-            // 5. Very generic fallback for anything that looks like text content
-            else if (chunk.text && typeof chunk.text === 'string') {
+            } else if (chunk.text && typeof chunk.text === 'string') {
                accumulatedText += chunk.text;
             } else if (chunk.parts && Array.isArray(chunk.parts)) {
-               accumulatedText += chunk.parts.map((p: any) => p.text || '').join('');
+               const parts = chunk.parts;
+               accumulatedText += parts.map((p: any) => p.text || '').join('');
+               currentThinking += parts.map((p: any) => p.thought || '').join('');
             } else if (chunk.content?.parts && Array.isArray(chunk.content.parts)) {
-               accumulatedText += chunk.content.parts.map((p: any) => p.text || '').join('');
-            } else if (typeof chunk === 'string') {
-               accumulatedText += chunk;
+               const parts = chunk.content.parts;
+               accumulatedText += parts.map((p: any) => p.text || '').join('');
+               currentThinking += parts.map((p: any) => p.thought || '').join('');
             }
             
             chunksReceived++;
@@ -600,11 +464,6 @@ export class GeminiService {
       });
 
       this.persistActiveChat();
-
-      // Handle function results and follow-up
-      if (pendingFunctionCalls.length > 0) {
-        await this.processFunctionCalls(pendingFunctionCalls);
-      }
 
     } catch (error: unknown) {
       console.error('Error sending message:', error);
@@ -648,132 +507,6 @@ export class GeminiService {
         clearInterval(this.timerInterval);
         this.timerInterval = undefined;
       }
-    }
-  }
-
-  private async processFunctionCalls(fcs: any[]) {
-    this.workingStatus.set('Executing tools...');
-    
-    const results = await Promise.all(fcs.map(async fc => {
-      let resultData: any;
-      
-      // Mock execution based on name
-      if (fc.name === 'get_weather') {
-        const temp = 18 + Math.floor(Math.random() * 10);
-        resultData = { 
-          temperature: temp, 
-          condition: ['Sunny', 'Cloudy', 'Rainy'][Math.floor(Math.random() * 3)],
-          location: fc.arguments.location,
-          unit: 'celsius',
-          advice: temp > 22 ? 'Aproveite o sol!' : 'Pode precisar de um casaco leve.'
-        };
-      } else if (fc.name === 'schedule_meeting') {
-        resultData = { 
-          status: 'confirmed', 
-          meeting_id: 'MTG-' + Math.random().toString(36).substring(2, 7).toUpperCase(),
-          time: fc.arguments.time,
-          date: fc.arguments.date,
-          link: 'https://meet.google.com/abc-defg-hij'
-        };
-      } else {
-        resultData = { error: 'Service temporarily unavailable', tool: fc.name };
-      }
-
-      return {
-        type: 'function_result',
-        name: fc.name,
-        call_id: fc.id,
-        result: [{ type: 'text', text: JSON.stringify(resultData) }]
-      };
-    }));
-
-    // Send results back to model
-    this.chatHistory.update(history => [
-      ...history,
-      { role: 'tool', parts: 'Tool results sent' } as Message
-    ]);
-
-    // Automatic turn continuation
-    await this.sendToolResults(results);
-  }
-
-  private async sendToolResults(results: any[]) {
-    this.isLoading.set(true);
-    try {
-      const smartConfig = this.getOptimalConfig();
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: this.getSelectedModel(),
-          contents: results, // Input is function_result steps
-          config: {
-            systemInstruction: smartConfig.systemInstruction,
-            thinkingLevel: this.thinkingLevel(),
-            tools: [
-              ...(this.isGoogleSearchEnabled() ? [{ googleSearch: {} }] : []),
-              { codeExecution: {} }
-            ],
-            temperature: smartConfig.temperature,
-            topP: smartConfig.topP,
-          },
-          interactionId: this.interactionId(),
-          customApiKey: this.userApiKey()
-        })
-      });
-
-      if (!response.ok) throw new Error('Falha ao enviar resultados das ferramentas.');
-
-      const reader = response.body?.getReader();
-      if (!reader) return;
-
-      const decoder = new TextDecoder();
-      let accumulatedText = '';
-      let buffer = '';
-      
-      const modelMessage: Message = { role: 'model', parts: '' };
-      this.chatHistory.update(history => [...history, modelMessage]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const data = line.substring(6).trim();
-          if (data === '[DONE]') break;
-          try {
-            const chunk = JSON.parse(data);
-            if (chunk.event_type === 'step.delta' && chunk.delta?.text) {
-              accumulatedText += chunk.delta.text;
-            } else if (chunk.candidates?.[0]?.content?.parts?.[0]?.text) {
-              accumulatedText += chunk.candidates[0].content.parts[0].text;
-            } else if (chunk.interaction?.steps) {
-              // Finish turn handling
-              const lastStep = chunk.interaction.steps[chunk.interaction.steps.length - 1];
-              if (lastStep.type === 'model_output') {
-                accumulatedText = lastStep.content?.[0]?.text || lastStep.model_output?.parts?.[0]?.text || '';
-              }
-            }
-
-            this.chatHistory.update(history => {
-              const updated = [...history];
-              updated[updated.length - 1] = { ...updated[updated.length - 1], parts: accumulatedText };
-              return updated;
-            });
-          } catch {
-            // Ignore incomplete chunks
-          }
-        }
-      }
-      this.persistActiveChat();
-    } catch (e) {
-      console.error('Error sending tool results:', e);
-    } finally {
-      this.isLoading.set(false);
     }
   }
 

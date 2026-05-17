@@ -26,7 +26,7 @@ import { GeminiService } from '../services/gemini';
           <div class="flex items-center gap-3">
             <div>
               <h3 class="text-lg font-semibold text-white tracking-tight">Personalizar IA</h3>
-              <p class="text-xs text-zinc-500">Ajuste o comportamento e as habilidades da Superintelligence</p>
+              <p class="text-xs text-zinc-500">Ajuste o comportamento e as habilidades do Gemini 3</p>
             </div>
           </div>
           <button 
@@ -131,9 +131,7 @@ import { GeminiService } from '../services/gemini';
                     </div>
                   </div>
                 }
-              </div>
-
-              <!-- Skill: liveApi -->
+               <!-- Skill: liveApi -->
               <div class="relative">
                 <div class="flex items-center gap-2 w-full p-1 bg-black/10 border border-gemini-border rounded-xl group transition-all" [class.border-emerald-500/30]="gemini.enabledSkills().liveApi" [class.bg-emerald-500/5]="gemini.enabledSkills().liveApi">
                   <button (click)="gemini.toggleSkill('liveApi')" class="flex-1 flex items-center justify-between py-2 px-3 rounded-lg transition-colors text-left">
@@ -155,35 +153,12 @@ import { GeminiService } from '../services/gemini';
                   </div>
                 }
               </div>
-
-              <!-- Skill: interactions -->
-              <div class="relative">
-                <div class="flex items-center gap-2 w-full p-1 bg-black/10 border border-gemini-border rounded-xl group transition-all" [class.border-amber-500/30]="gemini.enabledSkills().interactions" [class.bg-amber-500/5]="gemini.enabledSkills().interactions">
-                  <button (click)="gemini.toggleSkill('interactions')" class="flex-1 flex items-center justify-between py-2 px-3 rounded-lg transition-colors text-left">
-                    <span [class.text-amber-400]="gemini.enabledSkills().interactions" class="text-[13px] font-medium text-zinc-400 group-hover:text-zinc-200 transition-colors">interactions-api</span>
-                    <mat-icon class="scale-90" [class.text-amber-400]="gemini.enabledSkills().interactions" [class.text-zinc-600]="!gemini.enabledSkills().interactions">
-                      {{ gemini.enabledSkills().interactions ? 'check_box' : 'check_box_outline_blank' }}
-                    </mat-icon>
-                  </button>
-                  <button (click)="toggleExplanation('interactions', $event)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-zinc-500 hover:text-amber-400 transition-colors shrink-0">
-                    <mat-icon class="!text-[18px] !w-[18px] !h-[18px] flex items-center justify-center">help_outline</mat-icon>
-                  </button>
-                </div>
-                @if (openExplanation() === 'interactions') {
-                  <div class="absolute right-0 bottom-full mb-2 w-full sm:w-72 bg-zinc-900 border border-gemini-border rounded-xl shadow-2xl p-4 z-[210] animate-in fade-in zoom-in-95 duration-200">
-                    <div class="text-[11px] text-zinc-300 leading-relaxed">
-                      <b class="text-amber-400 block mb-1">Especialista em Interactions API</b>
-                      Domínio sobre estados persistentes, agentes de pesquisa (Deep Research) e execuções complexas em segundo plano.
-                    </div>
-                  </div>
-                }
-              </div>
             </div>
           </div>
 
           <div class="bg-blue-500/5 border border-blue-500/10 rounded-2xl p-4 flex gap-4">
             <p class="text-[11px] leading-relaxed text-zinc-400">
-              As instruções do sistema e habilidades definem como a Superintelligence deve se portar e quais conhecimentos técnicos deve priorizar em todas as conversas.
+              As instruções do sistema e habilidades definem como o Gemini 3 deve se portar e quais conhecimentos técnicos deve priorizar em todas as conversas.
             </p>
           </div>
         </div>

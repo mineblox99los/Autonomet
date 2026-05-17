@@ -60,92 +60,45 @@ app.post('/api/chat', async (req, res) => {
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
-          'Api-Revision': '2026-05-20',
         }
       }
     });
 
-    const interactionId = req.body.interactionId;
-    const contents = req.body.contents;
-
-    const inputData = contents.map((p: any) => {
-      if (p.text) return { type: 'text', text: p.text };
-      if (p.inlineData) return { type: 'image', data: p.inlineData.data, mime_type: p.inlineData.mimeType };
+    const parts = contents.map((p: any) => {
+      if (p.text) return { text: p.text };
+      if (p.inlineData) return { inlineData: { data: p.inlineData.data, mimeType: p.inlineData.mimeType } };
       return p;
     });
 
-    const streamRequest: any = {
+    const standardContents = history && history.length > 0 
+      ? [...history, { role: 'user', parts }]
+      : [{ role: 'user', parts }];
+
+    const streamResult = await clientAi.models.generateContentStream({
       model: model || 'gemini-3-flash-preview',
-      api_version: 'v1beta',
-      input: inputData,
-      generation_config: {
+      contents: standardContents,
+      config: {
+        systemInstruction: config?.systemInstruction || config?.system_instruction,
         temperature: config?.temperature,
-        top_p: config?.topP,
-        max_output_tokens: config?.maxOutputTokens,
-        thinking_level: config?.thinkingLevel || 'low',
-        thinking_summaries: 'auto',
+        topP: config?.topP,
+        maxOutputTokens: config?.maxOutputTokens || 65536,
+        thinkingConfig: config?.thinkingConfig,
+        responseMimeType: config?.response_format?.response_mime_type || config?.responseFormat?.responseMimeType,
+        responseSchema: config?.response_format?.response_schema || config?.responseFormat?.responseSchema,
+        tools: (config?.tools || []).map((t: any) => {
+          if (t.googleSearch) return { googleSearch: {} };
+          return t;
+        }) as any,
       },
-      system_instruction: config?.systemInstruction,
-      response_format: config?.responseFormat,
-      tools: config?.tools?.flatMap((t: any) => {
-        if (t.googleSearch) return [{ type: 'google_search' }];
-        if (t.codeExecution) return [{ type: 'code_execution' }];
-        if (t.functionDeclarations) {
-          return t.functionDeclarations.map((fd: any) => ({
-            type: 'function',
-            ...fd
-          }));
-        }
-        if (t.mcpServer || t.type === 'mcp_server') {
-          return [{
-            type: 'mcp_server',
-            name: t.name,
-            url: t.url,
-            headers: t.headers,
-            allowed_tools: t.allowed_tools
-          }];
-        }
-        return [t];
-      }),
-      store: true
-    };
-
-    if (interactionId) {
-      streamRequest.previous_interaction_id = interactionId;
-    }
-
-    const streamResult = await clientAi.interactions.create({
-      ...streamRequest,
-      stream: true
-    } as any) as any;
+    });
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    for await (const event of streamResult) {
-      if (event) {
-        // Safe serialization for Interaction events which can have non-enumerable props
-        let data: any;
-        try {
-          if (typeof (event as any).toJSON === 'function') {
-            data = (event as any).toJSON();
-          } else {
-            // Manual fallback for common Interaction event properties if spread misses them
-            data = {
-              event_type: (event as any).event_type,
-              delta: (event as any).delta,
-              step: (event as any).step,
-              interaction: (event as any).interaction,
-              interaction_id: (event as any).interaction_id,
-              index: (event as any).index,
-              ...event
-            };
-          }
-        } catch (e) {
-          data = { ...event };
-        }
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    for await (const chunk of streamResult) {
+      if (chunk) {
+        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
       }
     }
 
@@ -172,7 +125,14 @@ app.post('/api/validate-key', async (req, res) => {
   }
 
   try {
-    const aiTest = new GoogleGenAI({ apiKey: key });
+    const aiTest = new GoogleGenAI({ 
+      apiKey: key,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
     await aiTest.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: [{ role: 'user', parts: [{ text: 'hi' }] }]

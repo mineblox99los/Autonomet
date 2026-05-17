@@ -1,16 +1,14 @@
 import { Component, ChangeDetectionStrategy, input, inject, computed, signal, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { DomSanitizer } from '@angular/platform-browser';
 import { MarkdownPipe } from '../markdown.pipe';
 import { Message, GeminiService } from '../services/gemini';
-import { ActionHistory } from './action-history';
 import { ToolTray } from './tool-tray';
 
 @Component({
   selector: 'app-chat-message',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MarkdownPipe, ActionHistory, ToolTray],
+  imports: [CommonModule, MatIconModule, MarkdownPipe, ToolTray],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-2 w-full max-w-full group">
@@ -45,7 +43,7 @@ import { ToolTray } from './tool-tray';
         <div class="flex flex-col gap-1 w-full">
           <!-- Meta Header -->
           <div class="flex items-center gap-2 text-[11px] font-medium text-zinc-500 mb-2 ml-1">
-            <span>Superintelligence AI</span>
+            <span>Gemini 3 Flash</span>
             <span class="w-1 h-1 rounded-full bg-zinc-700"></span>
             <span>{{ message().responseTime ? 'Ran for ' + message().responseTime + 's' : 'Instant response' }}</span>
           </div>
@@ -71,15 +69,12 @@ import { ToolTray } from './tool-tray';
           }
           
           <div class="flex flex-col gap-1.5 w-full min-w-0">
-            <!-- Action History -->
-            <app-action-history [messageText]="message().parts" [sanitizer]="sanitizer"></app-action-history>
-
             <app-tool-tray [steps]="message().steps || []"></app-tool-tray>
 
             <div class="flex-1 bg-gemini-surface border border-gemini-border rounded-2xl px-3 sm:px-4 pt-2.5 sm:pt-3 pb-2 sm:pb-2.5 overflow-hidden min-w-0">
               
               <div class="prose prose-invert prose-sm max-w-none leading-relaxed text-[14px] sm:text-[15px] markdown-content overflow-x-auto" 
-                   [innerHTML]="cleanParts() | markdown">
+                   [innerHTML]="message().parts | markdown">
               </div>
 
               @if (isConfigError()) {
@@ -143,13 +138,8 @@ import { ToolTray } from './tool-tray';
 export class ChatMessage {
   message = input.required<Message>();
   openSettings = output<void>();
-  sanitizer = inject(DomSanitizer);
   gemini = inject(GeminiService);
   isThinkingExpanded = signal(false);
-
-  cleanParts = computed(() => {
-    return this.message().parts.replace(/<action_history>[\s\S]*?<\/action_history>/g, '').trim();
-  });
 
   isConfigError = computed(() => {
     return this.message().parts.includes('CONFIG_REQUIRED') || 
