@@ -39,9 +39,9 @@
               "entry": "server.ts"
             },
             "prerender": false,
-            "define": {
-              "GEMINI_API_KEY": "''"
-            }
+              "define": {
+                "GEMINI_API_KEY": "''"
+              }
           },
           "configurations": {
             "production": {

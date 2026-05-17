@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, inject, computed, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, inject, computed, signal, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
@@ -58,6 +58,18 @@ import { ActionHistory } from './action-history';
                    [innerHTML]="cleanParts() | markdown">
               </div>
 
+              @if (isConfigError()) {
+                <div class="mt-4 p-4 rounded-xl bg-zinc-800/50 border border-white/10 flex flex-col items-center gap-3 text-center animate-in zoom-in-95 duration-500">
+                  <p class="text-[13px] text-zinc-400 font-medium">Configure sua própria chave gratuita para continuar explorando sem limites.</p>
+                  <button 
+                    (click)="openSettings.emit()"
+                    class="px-5 py-2.5 rounded-xl bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-bold transition-all active:scale-95"
+                  >
+                    Configurar Minha Chave de API
+                  </button>
+                </div>
+              }
+
               <!-- Grounding Sources -->
               @if (message().groundingMetadata; as metadata) {
                 @if (metadata.groundingChunks) {
@@ -106,10 +118,17 @@ import { ActionHistory } from './action-history';
 })
 export class ChatMessage {
   message = input.required<Message>();
+  openSettings = output<void>();
   sanitizer = inject(DomSanitizer);
   isThinkingExpanded = signal(false);
 
   cleanParts = computed(() => {
     return this.message().parts.replace(/<action_history>[\s\S]*?<\/action_history>/g, '').trim();
+  });
+
+  isConfigError = computed(() => {
+    return this.message().parts.includes('CONFIG_REQUIRED') || 
+           this.message().parts.includes('Configuração Necessária') ||
+           this.message().parts.includes('Limite de Uso Atingido');
   });
 }

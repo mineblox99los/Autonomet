@@ -35,30 +35,23 @@ app.use(express.urlencoded({ extended: true }));
 /**
  * Gemini API Proxy
  */
-const ai = new GoogleGenAI({
-  apiKey: process.env['GEMINI_API_KEY'] || '',
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
-  }
-});
-
 app.post('/api/chat', async (req, res) => {
   const { model, contents, config, history, customApiKey } = req.body;
 
   try {
-    let clientAi = ai;
-    if (customApiKey) {
-      clientAi = new GoogleGenAI({
-        apiKey: customApiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          }
-        }
-      });
+    if (!customApiKey) {
+      res.status(401).json({ error: 'CONFIG_REQUIRED', message: 'Por favor, configure sua própria chave de API nas configurações para continuar.' });
+      return;
     }
+
+    const clientAi = new GoogleGenAI({
+      apiKey: customApiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
 
     const chat = clientAi.chats.create({
       model: model || 'gemini-3-flash-preview',
@@ -81,7 +74,12 @@ app.post('/api/chat', async (req, res) => {
 
   } catch (error: any) {
     console.error('Gemini Error:', error);
-    res.status(500).json({ error: error.message || 'Internal Server Error', details: error });
+    const status = error.status || (error.message?.includes('429') ? 429 : 500);
+    res.status(status).json({ 
+      error: error.message || 'Internal Server Error',
+      status: status,
+      details: error 
+    });
     return;
   }
 });

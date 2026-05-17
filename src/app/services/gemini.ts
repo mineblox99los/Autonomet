@@ -236,6 +236,12 @@ export class GeminiService {
 
       if (!response.ok) {
         const errorData = await response.json();
+        if (response.status === 401 || errorData.error === 'CONFIG_REQUIRED') {
+          throw new Error('CONFIG_REQUIRED');
+        }
+        if (response.status === 429) {
+          throw new Error('QUOTA_EXCEEDED');
+        }
         throw new Error(errorData.error || 'Erro na comunicação com o servidor.');
       }
 
@@ -312,8 +318,22 @@ export class GeminiService {
       let displayMessage = 'Erro ao se comunicar com a IA. Verifique sua chave ou conexão.';
       
       const err = error as { message?: string };
-      if (err?.message) {
-        displayMessage = err.message;
+      if (err?.message === 'CONFIG_REQUIRED') {
+        displayMessage = '### ⚠️ Configuração Necessária\n\nPara começar a usar o Superintelligence AI, você precisa configurar sua própria chave de API gratuita do Google.\n\n1. Obtenha uma chave no [Google AI Studio](https://aistudio.google.com/app/apikey).\n2. Clique no ícone de engrenagem nas configurações e cole sua chave.';
+      } else if (err?.message === 'QUOTA_EXCEEDED') {
+        displayMessage = '### ⚠️ Limite de Uso Atingido\n\nSua chave de API atingiu o limite de uso gratuito. Para continuar, aguarde alguns minutos para que o Google libere o uso novamente.';
+      } else if (err?.message) {
+        // Handle stringified JSON error messages that often come from GenAI
+        try {
+          const parsedError = JSON.parse(err.message);
+          if (parsedError.error?.message?.includes('429') || parsedError.status === 429) {
+            displayMessage = '### ⚠️ Limite de Uso Atingido\n\nVocê atingiu o limite de uso gratuito da nossa chave padrão (Quota Exceeded). Para continuar, você pode:\n\n1. **Aguardar alguns minutos** para que o limite seja liberado.\n2. **Configurar sua própria chave** de API gratuita do Google nas configurações.';
+          } else {
+            displayMessage = parsedError.error?.message || err.message;
+          }
+        } catch {
+          displayMessage = err.message;
+        }
       }
 
       this.chatHistory.update(history => {
