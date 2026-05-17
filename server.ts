@@ -5,6 +5,7 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
+import cors from 'cors';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
@@ -27,6 +28,7 @@ if (!existsSync(browserDistFolder)) {
 console.log('Using browserDistFolder:', browserDistFolder);
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -36,29 +38,35 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+app.head('/api/health', (req, res) => {
+  res.status(200).end();
+});
 
 /**
  * API Route for Key Validation
  */
-app.post('/api/validate-key', async (req, res) => {
+app.post('/api/validate-key', async (req: express.Request, res: express.Response): Promise<any> => {
   try {
     const { apiKey } = req.body;
     if (!apiKey) return res.status(400).json({ valid: false, error: 'Chave ausente' });
 
-    const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
+    const ai = new GoogleGenAI({ 
+      apiKey, 
+      httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+    });
     
-    // Minimal request to validate key using the correct @google/genai method
+    // Minimal request to validate key
     await ai.models.generateContent({ 
       model: 'gemini-3-flash-preview',
       contents: [{ role: 'user', parts: [{ text: 'hi' }] }] 
     });
     
-    res.json({ valid: true });
+    return res.json({ valid: true });
   } catch (error: any) {
     console.error('Validation Error:', error);
-    res.status(200).json({ 
+    return res.status(200).json({ 
       valid: false, 
-      error: 'Chave de API inválida ou sem permissão para o modelo Gemini 3.0 Flash Preview.' 
+      error: 'Chave de API inválida ou sem permissão para o modelo Gemini.' 
     });
   }
 });
@@ -66,7 +74,7 @@ app.post('/api/validate-key', async (req, res) => {
 /**
  * API Route for Gemini Chat (Streaming)
  */
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', async (req: express.Request, res: express.Response): Promise<any> => {
   try {
     const { message, history, apiKey, systemInstruction, googleSearchEnabled } = req.body;
     const finalApiKey = apiKey || process.env['GEMINI_API_KEY'];
@@ -75,7 +83,10 @@ app.post('/api/chat', async (req, res) => {
       return res.status(401).json({ error: 'Chave de API não configurada.' });
     }
 
-    const ai = new GoogleGenAI({ apiKey: finalApiKey, apiVersion: 'v1beta' });
+    const ai = new GoogleGenAI({ 
+      apiKey: finalApiKey, 
+      httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+    });
 
     const contents = (history || []).map((h: any) => ({
       role: h.role,
@@ -91,13 +102,13 @@ app.post('/api/chat', async (req, res) => {
     res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
     res.setHeader('Transfer-Encoding', 'chunked');
 
-    // Use correct streaming method for @google/genai
+    // Use correct streaming method and parameter structure
     const result = await ai.models.generateContentStream({
       model: 'gemini-3-flash-preview',
       contents,
-      tools: tools.length > 0 ? tools : undefined,
       config: {
-        systemInstruction: systemInstruction,
+        systemInstruction,
+        tools: tools.length > 0 ? tools : undefined,
         temperature: 1.0,
         topP: 0.95,
         topK: 64,
@@ -106,16 +117,9 @@ app.post('/api/chat', async (req, res) => {
     });
     
     for await (const chunk of result) {
-      let chunkText = '';
-      try {
-        chunkText = chunk.text;
-      } catch (e) {
-        // Chunk might not have text, only metadata
-      }
-      
+      const chunkText = chunk.text || '';
       const responseData: any = { text: chunkText };
       
-      // Capture grounding metadata if available in this chunk
       if (chunk.candidates?.[0]?.groundingMetadata) {
         responseData.groundingMetadata = chunk.candidates[0].groundingMetadata;
       }
@@ -124,6 +128,7 @@ app.post('/api/chat', async (req, res) => {
     }
     
     res.end();
+    return;
   } catch (error: any) {
     console.error('Gemini Stream Error:', error);
     let statusCode = error.status || 500;
@@ -136,9 +141,10 @@ app.post('/api/chat', async (req, res) => {
     }
 
     if (!res.headersSent) {
-      res.status(statusCode).json({ error: message });
+      return res.status(statusCode).json({ error: message });
     } else {
       res.end();
+      return;
     }
   }
 });
@@ -167,6 +173,17 @@ app.get(/.*/, (req, res, next) => {
 });
 
 /**
+ * Global 404 for API or other methods
+ */
+app.use((req, res) => {
+  if (req.url.startsWith('/api/')) {
+    res.status(404).json({ error: `O ponto de extremidade ${req.method} ${req.url} não foi encontrado.` });
+  } else {
+    res.status(404).send('Página não encontrada');
+  }
+});
+
+/**
  * Start the server
  */
 const port = process.env['PORT'] || 3000;
@@ -180,3 +197,5 @@ if (isMainModule(import.meta.url)) {
  * Export for SSR runner (Required for Angular Dev Server Integration)
  */
 export const reqHandler = createNodeRequestHandler(app);
+
+export default app;

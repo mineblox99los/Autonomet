@@ -34,14 +34,14 @@ import { GeminiService } from '../services/gemini';
             </button>
 
             @if (isDropdownOpen()) {
-              <div class="absolute bottom-full left-0 mb-3 w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-2 z-[100] animate-in fade-in zoom-in-95 duration-200">
-                <div class="px-3 py-2 border-b border-white/5 mb-1">
+              <div class="absolute bottom-full left-0 mb-3 w-64 bg-gemini-surface border border-gemini-border rounded-xl shadow-2xl p-2 z-[100] animate-in fade-in zoom-in-95 duration-200">
+                <div class="px-3 py-2 border-b border-gemini-border mb-1">
                   <div class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest leading-none">Status da API</div>
                 </div>
 
                 <div class="px-3 py-2">
                   <div class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest leading-none mb-3">Chave Ativa</div>
-                  <div class="bg-black/20 rounded-lg px-2.5 py-2 mb-3 border border-white/5">
+                  <div class="bg-black/20 rounded-lg px-2.5 py-2 mb-3 border border-gemini-border">
                     <code class="text-[10px] text-zinc-500 truncate leading-none block">
                       {{ maskedKey() }}
                     </code>
@@ -68,8 +68,8 @@ import { GeminiService } from '../services/gemini';
               </button>
               
               @if (isPlusDropdownOpen()) {
-                <div class="absolute bottom-full left-0 mb-3 w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-2 z-[100] animate-in fade-in zoom-in-95 duration-200">
-                  <div class="px-3 py-2 border-b border-white/5 mb-1">
+                <div class="absolute bottom-full left-0 mb-3 w-64 bg-gemini-surface border border-gemini-border rounded-xl shadow-2xl p-2 z-[100] animate-in fade-in zoom-in-95 duration-200">
+                  <div class="px-3 py-2 border-b border-gemini-border mb-1">
                     <div class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest leading-none">Capacidades</div>
                   </div>
 
@@ -110,7 +110,7 @@ import { GeminiService } from '../services/gemini';
               </button>
               
               @if (isMicDropdownOpen()) {
-                <div class="absolute bottom-full left-0 mb-3 bg-gemini-surface text-zinc-300 text-[12px] px-3 py-1.5 rounded-lg border border-gemini-border shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-200 z-50">
+                <div class="absolute bottom-full left-0 mb-3 bg-gemini-surface text-zinc-300 text-[12px] px-4 py-2 rounded-xl border border-gemini-border shadow-2xl whitespace-nowrap animate-in fade-in zoom-in-95 duration-200 z-50">
                   Em desenvolvimento
                 </div>
               }
@@ -164,7 +164,9 @@ export class ChatInput {
 
   toggleMicDropdown(event: Event) {
     event.stopPropagation();
-    this.isMicDropdownOpen.update(v => !v);
+    const newState = !this.isMicDropdownOpen();
+    this.closeAllDropdowns();
+    this.isMicDropdownOpen.set(newState);
     if (this.isMicDropdownOpen()) {
       setTimeout(() => this.isMicDropdownOpen.set(false), 3000);
     }
@@ -172,12 +174,22 @@ export class ChatInput {
 
   togglePlusDropdown(event: Event) {
     event.stopPropagation();
-    this.isPlusDropdownOpen.update(v => !v);
+    const newState = !this.isPlusDropdownOpen();
+    this.closeAllDropdowns();
+    this.isPlusDropdownOpen.set(newState);
   }
 
   toggleDropdown(event: Event) {
     event.stopPropagation();
-    this.isDropdownOpen.update(v => !v);
+    const newState = !this.isDropdownOpen();
+    this.closeAllDropdowns();
+    this.isDropdownOpen.set(newState);
+  }
+
+  private closeAllDropdowns() {
+    this.isMicDropdownOpen.set(false);
+    this.isDropdownOpen.set(false);
+    this.isPlusDropdownOpen.set(false);
   }
 
   @HostListener('window:click', ['$event'])
