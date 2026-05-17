@@ -61,48 +61,6 @@ import { GeminiService } from '../services/gemini';
 
             <div class="relative">
               <button 
-                (click)="togglePlusDropdown($event)"
-                class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:bg-white/5 active:bg-blue-500/30 transition-all dropdown-container"
-                id="plus-button"
-              >
-                <mat-icon class="scale-90">add</mat-icon>
-              </button>
-              
-              @if (isPlusDropdownOpen()) {
-                <div class="absolute bottom-full left-0 mb-3 w-64 bg-gemini-surface border border-gemini-border rounded-xl shadow-2xl p-2 z-[100] animate-in fade-in zoom-in-95 duration-200">
-                  <div class="px-3 py-2 border-b border-gemini-border mb-1">
-                    <div class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest leading-none">Capacidades</div>
-                  </div>
-
-                  <div class="px-1 py-1">
-                    <button 
-                      (click)="gemini.toggleGoogleSearch()"
-                      class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 transition-all flex items-center justify-between group"
-                    >
-                      <div class="flex items-center gap-3">
-                        <div class="flex flex-col">
-                          <span class="text-xs font-medium text-zinc-200">Google Search</span>
-                          <span class="text-[10px] text-zinc-500">Resultados em tempo real</span>
-                        </div>
-                      </div>
-                      <div 
-                        class="w-8 h-4 rounded-full relative transition-colors duration-200 ease-in-out"
-                        [class.bg-emerald-500]="gemini.isGoogleSearchEnabled()"
-                        [class.bg-zinc-700]="!gemini.isGoogleSearchEnabled()"
-                      >
-                        <div 
-                          class="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-200 ease-in-out shadow-sm"
-                          [class.translate-x-4]="gemini.isGoogleSearchEnabled()"
-                        ></div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              }
-            </div>
-
-            <div class="relative">
-              <button 
                 (click)="toggleMic($event)"
                 class="w-8 h-8 flex items-center justify-center rounded-full transition-all"
                 [class.text-blue-400]="isRecording()"
@@ -148,7 +106,6 @@ export class ChatInput {
   isMicNotSupportedOpen = signal(false);
   isRecording = signal(false);
   isDropdownOpen = signal(false);
-  isPlusDropdownOpen = signal(false);
   
   private recognition: any;
 
@@ -229,13 +186,6 @@ export class ChatInput {
     }
   }
 
-  togglePlusDropdown(event: Event) {
-    event.stopPropagation();
-    const newState = !this.isPlusDropdownOpen();
-    this.closeAllDropdowns();
-    this.isPlusDropdownOpen.set(newState);
-  }
-
   toggleDropdown(event: Event) {
     event.stopPropagation();
     const newState = !this.isDropdownOpen();
@@ -245,15 +195,13 @@ export class ChatInput {
 
   private closeAllDropdowns() {
     this.isDropdownOpen.set(false);
-    this.isPlusDropdownOpen.set(false);
   }
 
   @HostListener('window:click', ['$event'])
   onWindowClick(event: MouseEvent) {
-    if (this.isDropdownOpen() || this.isPlusDropdownOpen()) {
+    if (this.isDropdownOpen()) {
       const target = event.target as HTMLElement;
       if (!target.closest('.dropdown-container')) {
-        this.isPlusDropdownOpen.set(false);
         this.isDropdownOpen.set(false);
       }
     }
