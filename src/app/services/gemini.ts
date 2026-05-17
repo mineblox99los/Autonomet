@@ -15,6 +15,15 @@ export interface ChatSession {
   createdAt: number;
 }
 
+export interface QuotaInfo {
+  rpm: number;
+  tpm: number;
+  rpd: number;
+  maxRpm: number;
+  maxTpm: number;
+  maxRpd: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -22,6 +31,47 @@ export class GeminiService {
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
   private userApiKey = signal<string | null>(this.isBrowser() ? localStorage.getItem('user_gemini_api_key') : null);
+  
+  // Tracking data
+  private requestHistory = signal<{ timestamp: number; tokens: number }[]>(this.loadQuotaFromStorage());
+  
+  quota = computed<QuotaInfo>(() => {
+    const now = Date.now();
+    const oneMinuteAgo = now - 60000;
+    const todayStart = new Date().setHours(0, 0, 0, 0);
+    
+    const lastMinutePackets = this.requestHistory().filter(r => r.timestamp > oneMinuteAgo);
+    const todayPackets = this.requestHistory().filter(r => r.timestamp > todayStart);
+    
+    const rpm = lastMinutePackets.length;
+    const tpm = lastMinutePackets.reduce((acc, curr) => acc + curr.tokens, 0);
+    const rpd = todayPackets.length;
+    
+    return {
+      rpm,
+      tpm,
+      rpd,
+      maxRpm: 5,
+      maxTpm: 250000,
+      maxRpd: 20
+    };
+  });
+
+  private loadQuotaFromStorage(): { timestamp: number; tokens: number }[] {
+    if (!this.isBrowser()) return [];
+    const saved = localStorage.getItem('gemini_quota_history');
+    if (!saved) return [];
+    
+    // Purge old data (older than today)
+    const todayStart = new Date().setHours(0, 0, 0, 0);
+    const data: { timestamp: number; tokens: number }[] = JSON.parse(saved);
+    return data.filter(d => d.timestamp > todayStart);
+  }
+
+  private saveQuotaToStorage() {
+    if (!this.isBrowser()) return;
+    localStorage.setItem('gemini_quota_history', JSON.stringify(this.requestHistory()));
+  }
   
   private isBrowser(): boolean {
     return isPlatformBrowser(this.platformId);
@@ -176,8 +226,17 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
       
       if (!reader) throw new Error('No reader found');
 
+      // Estimate initial tokens (prompt tokens)
+      const promptTokens = Math.ceil(trimmedPrompt.length / 4);
+      this.requestHistory.update(prev => {
+        const next = [...prev, { timestamp: Date.now(), tokens: promptTokens }];
+        return next;
+      });
+      this.saveQuotaToStorage();
+
       let accumulatedText = '';
       let chunksReceived = 0;
+      let lastQuotaUpdate = Date.now();
       
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
@@ -195,6 +254,15 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
 
         const chunk = decoder.decode(value, { stream: true });
         accumulatedText += chunk;
+
+        // Periodic quota update for long streaming responses
+        const now = Date.now();
+        if (now - lastQuotaUpdate > 5000) {
+          const newTokens = Math.ceil(chunk.length / 4);
+          this.requestHistory.update(prev => [...prev, { timestamp: now, tokens: newTokens }]);
+          this.saveQuotaToStorage();
+          lastQuotaUpdate = now;
+        }
         
         this.chatHistory.update(history => {
           const lastIndex = history.length - 1;

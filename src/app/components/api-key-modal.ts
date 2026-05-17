@@ -2,20 +2,21 @@ import { Component, ChangeDetectionStrategy, output, input, signal } from '@angu
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { UsageMonitor } from './usage-monitor';
 
 @Component({
   selector: 'app-api-key-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatIconModule],
+  imports: [CommonModule, ReactiveFormsModule, MatIconModule, UsageMonitor],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-      <div class="bg-gemini-surface border border-gemini-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-8 duration-500">
+      <div class="bg-gemini-surface border border-gemini-border w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[90dvh] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-8 duration-500">
         <!-- Header -->
-        <div class="px-6 py-5 border-b border-gemini-border flex items-center justify-between">
+        <div class="px-6 py-5 border-b border-gemini-border flex items-center justify-between shrink-0">
           <div>
-            <h2 class="text-lg font-semibold text-white">Configurar Chave de API</h2>
-            <p class="text-xs text-zinc-400">Personalize sua experiência com sua própria chave</p>
+            <h2 class="text-lg font-semibold text-white">Configurações de API</h2>
+            <p class="text-xs text-zinc-400">Gerencie sua chave e monitore seu uso</p>
           </div>
           <button (click)="closeModal.emit()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-zinc-500 hover:text-white transition-all active:scale-95">
             <mat-icon class="!text-[20px]">close</mat-icon>
@@ -23,7 +24,14 @@ import { MatIconModule } from '@angular/material/icon';
         </div>
 
         <!-- Body -->
-        <div class="p-6">
+        <div class="p-6 overflow-y-auto">
+          <!-- Usage Monitor Section -->
+          <div class="mb-8">
+            <app-usage-monitor></app-usage-monitor>
+          </div>
+
+          <div class="h-px bg-white/5 w-full mb-8"></div>
+
           <p class="text-sm text-zinc-300 mb-6 leading-relaxed">
             Sua chave é armazenada localmente no seu navegador. Você pode obter uma chave gratuita na 
             <a href="https://aistudio.google.com/api-keys" target="_blank" class="text-blue-400 hover:underline">Plataforma de Desenvolvedor</a>.
