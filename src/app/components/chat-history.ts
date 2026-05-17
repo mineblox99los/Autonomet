@@ -10,7 +10,7 @@ import { Message } from '../services/gemini';
   imports: [CommonModule, MatIconModule, ChatMessage],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="h-full overflow-y-auto pt-8 pb-40 px-4 scrollbar-thin overflow-x-hidden" #chatContainer>
+    <div class="h-full overflow-y-auto pt-8 pb-72 px-4 scrollbar-thin overflow-x-hidden" #chatContainer>
       <div class="flex flex-col gap-8 max-w-[800px] mx-auto">
         @for (message of history(); track $index) {
           <app-chat-message [message]="message" (openSettings)="openSettings.emit()"></app-chat-message>

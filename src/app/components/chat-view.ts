@@ -113,6 +113,7 @@ import { SystemInstructionModal } from './system-instruction-modal';
       @if (isSystemInstructionModalOpen()) {
         <app-system-instruction-modal
           [currentInstruction]="gemini.systemInstruction()"
+          [currentSchema]="gemini.responseSchema()"
           (save)="saveSystemInstruction($event)"
           (closeModal)="isSystemInstructionModalOpen.set(false)"
         ></app-system-instruction-modal>
@@ -186,8 +187,9 @@ export class ChatView {
     this.isApiKeyModalOpen.set(false);
   }
 
-  saveSystemInstruction(instruction: string) {
-    this.gemini.setSystemInstruction(instruction);
+  saveSystemInstruction(data: { instruction: string, schema: string }) {
+    this.gemini.setSystemInstruction(data.instruction);
+    this.gemini.setResponseSchema(data.schema);
     this.isSystemInstructionModalOpen.set(false);
   }
 

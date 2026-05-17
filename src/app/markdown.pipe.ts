@@ -28,7 +28,7 @@ export class MarkdownPipe implements PipeTransform {
   transform(value: string | undefined): SafeHtml {
     if (!value) return '';
     try {
-      const html = marked.parse(value, { async: false }) as string;
+      const html = (marked.parse(value, { async: false }) as string).trim();
       const sanitizedHtml = DOMPurify.sanitize(html);
       return this.sanitizer.bypassSecurityTrustHtml(sanitizedHtml);
     } catch (e) {

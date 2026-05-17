@@ -1,12 +1,13 @@
 import { Component, ChangeDetectionStrategy, output, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 import { ChatSession } from '../services/gemini';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <!-- Overlay for mobile -->
@@ -73,7 +74,17 @@ import { ChatSession } from '../services/gemini';
       </div>
 
       <!-- Bottom Profile/Status -->
-      <div class="p-4 border-t border-gemini-border mt-auto relative">
+      <div class="p-4 border-t border-gemini-border mt-auto relative space-y-2">
+        <!-- MCP Guide Link -->
+        <a 
+          routerLink="/guide"
+          class="flex items-center gap-3 px-3 py-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-all text-xs mb-2"
+          (click)="closeSidebar.emit()"
+        >
+          <mat-icon class="scale-75 text-blue-400">help_outline</mat-icon>
+          <span>Guia de Configuração</span>
+        </a>
+
         <!-- Dropdown Menu -->
         @if (isProfileMenuOpen()) {
           <div 

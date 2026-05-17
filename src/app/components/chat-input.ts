@@ -39,7 +39,7 @@ import { GeminiService } from '../services/gemini';
             (keydown.enter)="handleEnter($event)"
             placeholder="Faça perguntas ou anexe imagens (máx. 10)"
             class="flex-1 bg-transparent border-none outline-none resize-none text-[14px] sm:text-[15px] pt-1.5 placeholder:text-zinc-500 overflow-y-auto leading-relaxed"
-            rows="2"
+            rows="1"
           ></textarea>
         </div>
         
@@ -93,10 +93,28 @@ import { GeminiService } from '../services/gemini';
 
                   <button 
                     (click)="openApiKeyModal.emit()"
-                    class="w-full text-center text-xs px-2 py-2 rounded-xl text-zinc-300 bg-white/[0.05] border border-white/[0.05] hover:bg-white/10 active:bg-white/20 transition-all font-medium"
+                    class="w-full text-center text-xs px-2 py-2 rounded-xl text-zinc-300 bg-white/[0.05] border border-white/[0.05] hover:bg-white/10 active:bg-white/20 transition-all font-medium mb-3"
                   >
                     Gerenciar Chave
                   </button>
+
+                  <div class="border-t border-gemini-border pt-3 mt-1">
+                    <div class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest leading-none mb-2 italic">Capacidade de Raciocínio (Gemini 3)</div>
+                    <div class="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
+                      @for (level of thinkingLevels; track level) {
+                        <button 
+                          (click)="gemini.setThinkingLevel(level)"
+                          class="px-2 py-1.5 rounded-lg text-[9px] font-bold transition-all whitespace-nowrap flex-1"
+                          [class.bg-blue-500]="gemini.thinkingLevel() === level"
+                          [class.text-white]="gemini.thinkingLevel() === level"
+                          [class.bg-white/5]="gemini.thinkingLevel() !== level"
+                          [class.text-zinc-500]="gemini.thinkingLevel() !== level"
+                        >
+                          {{ level.toUpperCase() }}
+                        </button>
+                      }
+                    </div>
+                  </div>
                 </div>
               </div>
             }
@@ -177,6 +195,7 @@ export class ChatInput {
   isMicNotSupportedOpen = signal(false);
   isRecording = signal(false);
   isDropdownOpen = signal(false);
+  thinkingLevels = ['minimal', 'low', 'medium', 'high'] as const;
   
   private recognition: any;
 

@@ -29,8 +29,19 @@ console.log('Using browserDistFolder:', browserDistFolder);
 
 const app = express();
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
+
+/**
+ * Error handling for large payloads or parsing errors before routes
+ */
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err && (err.type === 'entity.too.large' || err.status === 413)) {
+    res.status(413).json({ error: 'Payload too large', message: 'O arquivo ou conjunto de mensagens é muito grande para ser processado.' });
+    return;
+  }
+  next(err);
+});
 
 /**
  * Gemini API Proxy
@@ -49,24 +60,93 @@ app.post('/api/chat', async (req, res) => {
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
+          'Api-Revision': '2026-05-20',
         }
       }
     });
 
-    const chat = clientAi.chats.create({
-      model: model || 'gemini-3-flash-preview',
-      config: config,
-      history: history || []
+    const interactionId = req.body.interactionId;
+    const contents = req.body.contents;
+
+    const inputData = contents.map((p: any) => {
+      if (p.text) return { type: 'text', text: p.text };
+      if (p.inlineData) return { type: 'image', data: p.inlineData.data, mime_type: p.inlineData.mimeType };
+      return p;
     });
 
-    const result = await chat.sendMessageStream({ message: contents });
+    const streamRequest: any = {
+      model: model || 'gemini-3-flash-preview',
+      api_version: 'v1beta',
+      input: inputData,
+      generation_config: {
+        temperature: config?.temperature,
+        top_p: config?.topP,
+        max_output_tokens: config?.maxOutputTokens,
+        thinking_level: config?.thinkingLevel || 'low',
+        thinking_summaries: 'auto',
+      },
+      system_instruction: config?.systemInstruction,
+      response_format: config?.responseFormat,
+      tools: config?.tools?.flatMap((t: any) => {
+        if (t.googleSearch) return [{ type: 'google_search' }];
+        if (t.codeExecution) return [{ type: 'code_execution' }];
+        if (t.functionDeclarations) {
+          return t.functionDeclarations.map((fd: any) => ({
+            type: 'function',
+            ...fd
+          }));
+        }
+        if (t.mcpServer || t.type === 'mcp_server') {
+          return [{
+            type: 'mcp_server',
+            name: t.name,
+            url: t.url,
+            headers: t.headers,
+            allowed_tools: t.allowed_tools
+          }];
+        }
+        return [t];
+      }),
+      store: true
+    };
+
+    if (interactionId) {
+      streamRequest.previous_interaction_id = interactionId;
+    }
+
+    const streamResult = await clientAi.interactions.create({
+      ...streamRequest,
+      stream: true
+    } as any) as any;
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    for await (const chunk of result) {
-      res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    for await (const event of streamResult) {
+      if (event) {
+        // Safe serialization for Interaction events which can have non-enumerable props
+        let data: any;
+        try {
+          if (typeof (event as any).toJSON === 'function') {
+            data = (event as any).toJSON();
+          } else {
+            // Manual fallback for common Interaction event properties if spread misses them
+            data = {
+              event_type: (event as any).event_type,
+              delta: (event as any).delta,
+              step: (event as any).step,
+              interaction: (event as any).interaction,
+              interaction_id: (event as any).interaction_id,
+              index: (event as any).index,
+              ...event
+            };
+          }
+        } catch (e) {
+          data = { ...event };
+        }
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      }
     }
 
     res.write('data: [DONE]\n\n');

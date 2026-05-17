@@ -1,7 +1,8 @@
-import { Component, ChangeDetectionStrategy, output, input, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, output, input, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { ReactiveFormsModule, FormControl } from '@angular/forms';
+import { GeminiService } from '../services/gemini';
 
 @Component({
   selector: 'app-system-instruction-modal',
@@ -24,8 +25,8 @@ import { ReactiveFormsModule, FormControl } from '@angular/forms';
         <div class="px-6 py-5 border-b border-gemini-border flex items-center justify-between bg-white/[0.02] shrink-0">
           <div class="flex items-center gap-3">
             <div>
-              <h3 class="text-lg font-semibold text-white tracking-tight">Instruções do Sistema</h3>
-              <p class="text-xs text-zinc-500">Personalize o comportamento da IA</p>
+              <h3 class="text-lg font-semibold text-white tracking-tight">Personalizar IA</h3>
+              <p class="text-xs text-zinc-500">Ajuste o comportamento e as habilidades da Superintelligence</p>
             </div>
           </div>
           <button 
@@ -38,17 +39,18 @@ import { ReactiveFormsModule, FormControl } from '@angular/forms';
         </div>
 
         <!-- Body -->
-        <div class="p-6 overflow-y-auto">
-          <div class="mb-5">
+        <div class="p-6 overflow-y-auto space-y-6">
+          <!-- Instruções Section -->
+          <div>
             <label for="system-instruction-textarea" class="block text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2 px-1">
-              Personalização
+              Instruções do Sistema
             </label>
             <div class="relative group">
               <textarea
                 id="system-instruction-textarea"
                 [formControl]="instructionControl"
                 placeholder="Ex: Responda sempre em tópicos detalhados..."
-                class="w-full h-64 bg-black/20 border border-gemini-border rounded-2xl p-4 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all resize-none font-sans leading-relaxed"
+                class="w-full h-32 bg-black/20 border border-gemini-border rounded-2xl p-4 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all resize-none font-sans leading-relaxed"
               ></textarea>
               <div class="absolute bottom-4 right-4 flex items-center gap-2 pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity">
                 <span class="text-[10px] text-zinc-600 bg-black/40 px-2 py-1 rounded-md border border-white/5">Markdown suportado</span>
@@ -56,9 +58,132 @@ import { ReactiveFormsModule, FormControl } from '@angular/forms';
             </div>
           </div>
 
+          <!-- Structured Output Section (Conditional) -->
+          @if (gemini.enabledSkills().structuredOutput) {
+            <div class="animate-in slide-in-from-top-2 duration-300">
+              <label for="response-schema-textarea" class="block text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2 px-1">
+                JSON Schema (Structured Output)
+              </label>
+              <div class="relative group">
+                <textarea
+                  id="response-schema-textarea"
+                  [formControl]="schemaControl"
+                  placeholder='Ex: { "type": "object", "properties": { "name": { "type": "string" } } }'
+                  class="w-full h-32 bg-black/20 border border-gemini-border rounded-2xl p-4 text-xs font-mono text-blue-300 placeholder:text-zinc-700 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all resize-none leading-relaxed"
+                ></textarea>
+                @if (schemaError()) {
+                  <div class="absolute top-2 right-2 flex items-center gap-1 text-[9px] text-red-400 bg-red-500/10 px-2 py-1 rounded-md border border-red-500/20">
+                    <mat-icon class="!text-[12px] !w-3 !h-3">error_outline</mat-icon>
+                    JSON Inválido
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Dev Skills Section -->
+          <div>
+            <div class="block text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-3 px-1">
+              Habilidades de IA
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <!-- Skill: structuredOutput -->
+              <div class="relative">
+                <div class="flex items-center gap-2 w-full p-1 bg-black/10 border border-gemini-border rounded-xl group transition-all" [class.border-blue-400/30]="gemini.enabledSkills().structuredOutput" [class.bg-blue-400/5]="gemini.enabledSkills().structuredOutput">
+                  <button (click)="gemini.toggleSkill('structuredOutput')" class="flex-1 flex items-center justify-between py-2 px-3 rounded-lg transition-colors text-left">
+                    <span [class.text-blue-400]="gemini.enabledSkills().structuredOutput" class="text-[13px] font-medium text-zinc-400 group-hover:text-zinc-200 transition-colors">structured-output</span>
+                    <mat-icon class="scale-90" [class.text-blue-400]="gemini.enabledSkills().structuredOutput" [class.text-zinc-600]="!gemini.enabledSkills().structuredOutput">
+                      {{ gemini.enabledSkills().structuredOutput ? 'check_box' : 'check_box_outline_blank' }}
+                    </mat-icon>
+                  </button>
+                  <button (click)="toggleExplanation('structuredOutput', $event)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-zinc-500 hover:text-blue-400 transition-colors shrink-0">
+                    <mat-icon class="!text-[18px] !w-[18px] !h-[18px] flex items-center justify-center">help_outline</mat-icon>
+                  </button>
+                </div>
+                @if (openExplanation() === 'structuredOutput') {
+                  <div class="absolute right-0 bottom-full mb-2 w-full sm:w-72 bg-zinc-900 border border-gemini-border rounded-xl shadow-2xl p-4 z-[210] animate-in fade-in zoom-in-95 duration-200">
+                    <div class="text-[11px] text-zinc-300 leading-relaxed">
+                      <b class="text-blue-400 block mb-1">Saídas Estruturadas (JSON Schema)</b>
+                      Força a IA a responder em um formato JSON específico definido por você. Útil para extração de dados e automação.
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Skill: apiDev -->
+              <div class="relative">
+                <div class="flex items-center gap-2 w-full p-1 bg-black/10 border border-gemini-border rounded-xl group transition-all" [class.border-blue-500/30]="gemini.enabledSkills().apiDev" [class.bg-blue-500/5]="gemini.enabledSkills().apiDev">
+                  <button (click)="gemini.toggleSkill('apiDev')" class="flex-1 flex items-center justify-between py-2 px-3 rounded-lg transition-colors text-left">
+                    <span [class.text-blue-400]="gemini.enabledSkills().apiDev" class="text-[13px] font-medium text-zinc-400 group-hover:text-zinc-200 transition-colors">gemini-api-dev</span>
+                    <mat-icon class="scale-90" [class.text-blue-400]="gemini.enabledSkills().apiDev" [class.text-zinc-600]="!gemini.enabledSkills().apiDev">
+                      {{ gemini.enabledSkills().apiDev ? 'check_box' : 'check_box_outline_blank' }}
+                    </mat-icon>
+                  </button>
+                  <button (click)="toggleExplanation('apiDev', $event)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-zinc-500 hover:text-blue-400 transition-colors shrink-0">
+                    <mat-icon class="!text-[18px] !w-[18px] !h-[18px] flex items-center justify-center">help_outline</mat-icon>
+                  </button>
+                </div>
+                @if (openExplanation() === 'apiDev') {
+                  <div class="absolute right-0 bottom-full mb-2 w-full sm:w-72 bg-zinc-900 border border-gemini-border rounded-xl shadow-2xl p-4 z-[210] animate-in fade-in zoom-in-95 duration-200">
+                    <div class="text-[11px] text-zinc-300 leading-relaxed">
+                      <b class="text-blue-400 block mb-1">Especialista em API do Gemini</b>
+                      Focado em prompts multimodais, Chamadas de Função e saídas JSON estruturadas. Ideal para quem está construindo aplicações com a API.
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Skill: liveApi -->
+              <div class="relative">
+                <div class="flex items-center gap-2 w-full p-1 bg-black/10 border border-gemini-border rounded-xl group transition-all" [class.border-emerald-500/30]="gemini.enabledSkills().liveApi" [class.bg-emerald-500/5]="gemini.enabledSkills().liveApi">
+                  <button (click)="gemini.toggleSkill('liveApi')" class="flex-1 flex items-center justify-between py-2 px-3 rounded-lg transition-colors text-left">
+                    <span [class.text-emerald-400]="gemini.enabledSkills().liveApi" class="text-[13px] font-medium text-zinc-400 group-hover:text-zinc-200 transition-colors">gemini-live-api-dev</span>
+                    <mat-icon class="scale-90" [class.text-emerald-400]="gemini.enabledSkills().liveApi" [class.text-zinc-600]="!gemini.enabledSkills().liveApi">
+                      {{ gemini.enabledSkills().liveApi ? 'check_box' : 'check_box_outline_blank' }}
+                    </mat-icon>
+                  </button>
+                  <button (click)="toggleExplanation('liveApi', $event)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-zinc-500 hover:text-emerald-400 transition-colors shrink-0">
+                    <mat-icon class="!text-[18px] !w-[18px] !h-[18px] flex items-center justify-center">help_outline</mat-icon>
+                  </button>
+                </div>
+                @if (openExplanation() === 'liveApi') {
+                  <div class="absolute right-0 bottom-full mb-2 w-full sm:w-72 bg-zinc-900 border border-gemini-border rounded-xl shadow-2xl p-4 z-[210] animate-in fade-in zoom-in-95 duration-200">
+                    <div class="text-[11px] text-zinc-300 leading-relaxed">
+                      <b class="text-emerald-400 block mb-1">Especialista em Live API (Multimodal)</b>
+                      Conhecimento profundo em conexões WebSockets para streaming de áudio/vídeo em tempo real e baixíssima latência.
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Skill: interactions -->
+              <div class="relative">
+                <div class="flex items-center gap-2 w-full p-1 bg-black/10 border border-gemini-border rounded-xl group transition-all" [class.border-amber-500/30]="gemini.enabledSkills().interactions" [class.bg-amber-500/5]="gemini.enabledSkills().interactions">
+                  <button (click)="gemini.toggleSkill('interactions')" class="flex-1 flex items-center justify-between py-2 px-3 rounded-lg transition-colors text-left">
+                    <span [class.text-amber-400]="gemini.enabledSkills().interactions" class="text-[13px] font-medium text-zinc-400 group-hover:text-zinc-200 transition-colors">interactions-api</span>
+                    <mat-icon class="scale-90" [class.text-amber-400]="gemini.enabledSkills().interactions" [class.text-zinc-600]="!gemini.enabledSkills().interactions">
+                      {{ gemini.enabledSkills().interactions ? 'check_box' : 'check_box_outline_blank' }}
+                    </mat-icon>
+                  </button>
+                  <button (click)="toggleExplanation('interactions', $event)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-zinc-500 hover:text-amber-400 transition-colors shrink-0">
+                    <mat-icon class="!text-[18px] !w-[18px] !h-[18px] flex items-center justify-center">help_outline</mat-icon>
+                  </button>
+                </div>
+                @if (openExplanation() === 'interactions') {
+                  <div class="absolute right-0 bottom-full mb-2 w-full sm:w-72 bg-zinc-900 border border-gemini-border rounded-xl shadow-2xl p-4 z-[210] animate-in fade-in zoom-in-95 duration-200">
+                    <div class="text-[11px] text-zinc-300 leading-relaxed">
+                      <b class="text-amber-400 block mb-1">Especialista em Interactions API</b>
+                      Domínio sobre estados persistentes, agentes de pesquisa (Deep Research) e execuções complexas em segundo plano.
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
           <div class="bg-blue-500/5 border border-blue-500/10 rounded-2xl p-4 flex gap-4">
             <p class="text-[11px] leading-relaxed text-zinc-400">
-              As instruções do sistema definem como a Superintelligence deve se portar, qual tom deve usar e quais restrições deve seguir em todas as conversas.
+              As instruções do sistema e habilidades definem como a Superintelligence deve se portar e quais conhecimentos técnicos deve priorizar em todas as conversas.
             </p>
           </div>
         </div>
@@ -75,7 +200,7 @@ import { ReactiveFormsModule, FormControl } from '@angular/forms';
             (click)="handleSave()"
             class="px-8 py-2.5 rounded-xl text-sm font-semibold bg-white text-black hover:bg-zinc-200 active:scale-[0.98] transition-all"
           >
-            Salvar Instruções
+            Salvar Alterações
           </button>
         </div>
       </div>
@@ -95,21 +220,58 @@ import { ReactiveFormsModule, FormControl } from '@angular/forms';
     textarea::-webkit-scrollbar-thumb:hover {
       background: rgba(255, 255, 255, 0.1);
     }
-  `]
+  `],
+  host: {
+    '(document:click)': 'onDocumentClick()'
+  }
 })
 export class SystemInstructionModal implements OnInit {
+  gemini = inject(GeminiService);
   currentInstruction = input<string>('');
+  currentSchema = input<string>('');
   
-  save = output<string>();
+  save = output<{ instruction: string, schema: string }>();
   closeModal = output<void>();
 
   instructionControl = new FormControl('');
+  schemaControl = new FormControl('');
+  openExplanation = signal<string | null>(null);
+  schemaError = signal<boolean>(false);
 
   ngOnInit() {
     this.instructionControl.setValue(this.currentInstruction());
+    this.schemaControl.setValue(this.currentSchema());
+    
+    this.schemaControl.valueChanges.subscribe(val => {
+      if (!val) {
+        this.schemaError.set(false);
+        return;
+      }
+      try {
+        JSON.parse(val);
+        this.schemaError.set(false);
+      } catch {
+        this.schemaError.set(true);
+      }
+    });
+  }
+
+  toggleExplanation(skill: string, event: Event) {
+    event.stopPropagation();
+    this.openExplanation.update(current => current === skill ? null : skill);
+  }
+
+  onDocumentClick() {
+    if (this.openExplanation()) {
+      this.openExplanation.set(null);
+    }
   }
 
   handleSave() {
-    this.save.emit(this.instructionControl.value || '');
+    if (this.schemaError()) return;
+    this.save.emit({
+      instruction: this.instructionControl.value || '',
+      schema: this.schemaControl.value || ''
+    });
   }
 }

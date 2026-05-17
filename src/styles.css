@@ -81,6 +81,11 @@
     overflow-wrap: normal !important;
   }
 
+  /* Remove extra space at the end of markdown content */
+  .prose :last-child {
+    margin-bottom: 0 !important;
+  }
+
   /* Highlight.js Dark Theme minimal */
   .hljs { color: #e0e0e0; }
   .hljs-comment, .hljs-quote { color: #757575; font-style: italic; }

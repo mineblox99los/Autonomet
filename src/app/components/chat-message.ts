@@ -5,11 +5,12 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { MarkdownPipe } from '../markdown.pipe';
 import { Message, GeminiService } from '../services/gemini';
 import { ActionHistory } from './action-history';
+import { ToolTray } from './tool-tray';
 
 @Component({
   selector: 'app-chat-message',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MarkdownPipe, ActionHistory],
+  imports: [CommonModule, MatIconModule, MarkdownPipe, ActionHistory, ToolTray],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-2 w-full max-w-full group">
@@ -34,6 +35,11 @@ import { ActionHistory } from './action-history';
           <div class="prose prose-invert prose-sm max-w-none leading-relaxed text-[14px] sm:text-[15px]" 
                [innerHTML]="message().parts | markdown">
           </div>
+        </div>
+      } @else if (message().role === 'tool') {
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/5 border border-indigo-500/10 self-center text-[11px] text-indigo-400 font-medium">
+          <mat-icon class="!text-[14px]">auto_awesome</mat-icon>
+          Sincronizando resultados das ferramentas...
         </div>
       } @else {
         <div class="flex flex-col gap-1 w-full">
@@ -68,7 +74,9 @@ import { ActionHistory } from './action-history';
             <!-- Action History -->
             <app-action-history [messageText]="message().parts" [sanitizer]="sanitizer"></app-action-history>
 
-            <div class="flex-1 bg-gemini-surface border border-gemini-border rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 overflow-hidden min-w-0">
+            <app-tool-tray [steps]="message().steps || []"></app-tool-tray>
+
+            <div class="flex-1 bg-gemini-surface border border-gemini-border rounded-2xl px-3 sm:px-4 pt-2.5 sm:pt-3 pb-2 sm:pb-2.5 overflow-hidden min-w-0">
               
               <div class="prose prose-invert prose-sm max-w-none leading-relaxed text-[14px] sm:text-[15px] markdown-content overflow-x-auto" 
                    [innerHTML]="cleanParts() | markdown">
@@ -112,7 +120,7 @@ import { ActionHistory } from './action-history';
               }
               
               <!-- Footer Actions -->
-              <div class="flex items-center gap-3 sm:gap-4 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="hidden group-hover:flex items-center gap-3 sm:gap-4 mt-2 transition-all">
                 <div class="flex items-center gap-1 text-[10px] sm:text-[11px] text-zinc-500 cursor-pointer hover:text-white transition-colors">
                   <mat-icon class="scale-75">flag</mat-icon>
                   <span class="hidden sm:inline">Checkpoint</span>
