@@ -28,39 +28,19 @@ import { GeminiService } from '../services/gemini';
             <button 
               (click)="toggleDropdown($event)"
               class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:bg-white/5 active:bg-blue-500/30 transition-all font-medium"
-              aria-label="Opções e modelos"
+              aria-label="Configurações de API"
             >
-              <mat-icon class="scale-90">add_circle_outline</mat-icon>
+              <mat-icon class="scale-90">settings</mat-icon>
             </button>
 
             @if (isDropdownOpen()) {
               <div class="absolute bottom-full left-0 mb-3 w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-2 z-[100] animate-in fade-in zoom-in-95 duration-200">
-                <div class="px-3 py-2 border-b border-white/5 mb-2">
-                  <div class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest leading-none">Modelos Gemini</div>
+                <div class="px-3 py-2 border-b border-white/5 mb-1">
+                  <div class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest leading-none">Status da API</div>
                 </div>
 
-                <div class="space-y-1 mb-3">
-                  @for (model of gemini.availableModels; track model.id) {
-                    <button 
-                      (click)="selectModel(model.id, $event)"
-                      class="w-full text-left px-3 py-2 rounded-lg transition-all flex flex-col gap-0.5"
-                      [class]="gemini.getSelectedModel() === model.id ? 'bg-blue-500/10 border border-blue-500/20' : 'hover:bg-white/5 border border-transparent'"
-                    >
-                      <div class="flex items-center justify-between w-full">
-                        <span class="text-sm font-medium" [class.text-blue-400]="gemini.getSelectedModel() === model.id" [class.text-zinc-200]="gemini.getSelectedModel() !== model.id">
-                          {{ model.name }}
-                        </span>
-                        @if (gemini.getSelectedModel() === model.id) {
-                          <mat-icon class="!text-[16px] text-blue-400">check</mat-icon>
-                        }
-                      </div>
-                      <span class="text-[10px] text-zinc-500">{{ model.description }}</span>
-                    </button>
-                  }
-                </div>
-
-                <div class="px-3 py-2 border-t border-white/5 mt-2">
-                  <div class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest leading-none mb-3">Ajustes de API</div>
+                <div class="px-3 py-2">
+                  <div class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest leading-none mb-3">Chave Ativa</div>
                   <div class="bg-black/20 rounded-lg px-2.5 py-2 mb-3 border border-white/5">
                     <code class="text-[10px] text-zinc-500 truncate leading-none block">
                       {{ maskedKey() }}
@@ -77,6 +57,48 @@ import { GeminiService } from '../services/gemini';
                 </div>
               </div>
             }
+
+            <div class="relative">
+              <button 
+                (click)="togglePlusDropdown($event)"
+                class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:bg-white/5 active:bg-blue-500/30 transition-all dropdown-container"
+                id="plus-button"
+              >
+                <mat-icon class="scale-90">add</mat-icon>
+              </button>
+              
+              @if (isPlusDropdownOpen()) {
+                <div class="absolute bottom-full left-0 mb-3 w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-2 z-[100] animate-in fade-in zoom-in-95 duration-200">
+                  <div class="px-3 py-2 border-b border-white/5 mb-1">
+                    <div class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest leading-none">Capacidades</div>
+                  </div>
+
+                  <div class="px-1 py-1">
+                    <button 
+                      (click)="gemini.toggleGoogleSearch()"
+                      class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 transition-all flex items-center justify-between group"
+                    >
+                      <div class="flex items-center gap-3">
+                        <div class="flex flex-col">
+                          <span class="text-xs font-medium text-zinc-200">Google Search</span>
+                          <span class="text-[10px] text-zinc-500">Resultados em tempo real</span>
+                        </div>
+                      </div>
+                      <div 
+                        class="w-8 h-4 rounded-full relative transition-colors duration-200 ease-in-out"
+                        [class.bg-emerald-500]="gemini.isGoogleSearchEnabled()"
+                        [class.bg-zinc-700]="!gemini.isGoogleSearchEnabled()"
+                      >
+                        <div 
+                          class="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-200 ease-in-out shadow-sm"
+                          [class.translate-x-4]="gemini.isGoogleSearchEnabled()"
+                        ></div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
 
             <div class="relative">
               <button 
@@ -119,6 +141,7 @@ export class ChatInput {
   promptControl = new FormControl('');
   isMicDropdownOpen = signal(false);
   isDropdownOpen = signal(false);
+  isPlusDropdownOpen = signal(false);
 
   maskedKey = computed(() => {
     const key = this.currentKey();
@@ -147,22 +170,22 @@ export class ChatInput {
     }
   }
 
+  togglePlusDropdown(event: Event) {
+    event.stopPropagation();
+    this.isPlusDropdownOpen.update(v => !v);
+  }
+
   toggleDropdown(event: Event) {
     event.stopPropagation();
     this.isDropdownOpen.update(v => !v);
   }
 
-  selectModel(modelId: string, event: Event) {
-    event.stopPropagation();
-    this.gemini.setSelectedModel(modelId);
-    this.isDropdownOpen.set(false);
-  }
-
   @HostListener('window:click', ['$event'])
   onWindowClick(event: MouseEvent) {
-    if (this.isMicDropdownOpen() || this.isDropdownOpen()) {
+    if (this.isMicDropdownOpen() || this.isDropdownOpen() || this.isPlusDropdownOpen()) {
       const target = event.target as HTMLElement;
       if (!target.closest('.dropdown-container')) {
+        this.isPlusDropdownOpen.set(false);
         this.isMicDropdownOpen.set(false);
         this.isDropdownOpen.set(false);
       }

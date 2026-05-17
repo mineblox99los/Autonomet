@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, viewChild, ElementRef, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, viewChild, ElementRef, effect, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { ChatMessage } from './chat-message';
@@ -52,6 +52,8 @@ export class ChatHistory {
   isLoading = input.required<boolean>();
   elapsedTime = input<number>(0);
   status = input<string>('Working');
+  
+  openSettings = output<void>();
   
   chatContainer = viewChild<ElementRef<HTMLDivElement>>('chatContainer');
 

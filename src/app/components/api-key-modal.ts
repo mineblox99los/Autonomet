@@ -52,10 +52,27 @@ import { GeminiService } from '../services/gemini';
                 </button>
               </div>
               @if (error()) {
-                <p class="mt-2 text-xs text-red-400 flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
-                  <mat-icon class="!text-[14px] !w-3.5 !h-3.5">error_outline</mat-icon>
-                  {{ error() }}
-                </p>
+                <div class="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-1">
+                  <p class="text-xs text-red-400 flex items-center gap-1.5 font-medium">
+                    <mat-icon class="!text-[16px] !w-4 !h-4">error_outline</mat-icon>
+                    {{ error() }}
+                  </p>
+                  
+                  @if (debugInfo()) {
+                    <div class="pt-2 border-t border-red-500/10">
+                      <button 
+                        (click)="showDebug.set(!showDebug())"
+                        class="text-[10px] text-red-500/60 hover:text-red-500 underline uppercase tracking-tighter"
+                      >
+                        {{ showDebug() ? 'Esconder detalhes técnicos' : 'Ver detalhes técnicos para suporte' }}
+                      </button>
+                      
+                      @if (showDebug()) {
+                        <pre class="mt-2 text-[10px] bg-black/40 p-2 rounded border border-red-500/5 text-zinc-500 overflow-x-auto whitespace-pre-wrap font-mono">{{ debugInfo() | json }}</pre>
+                      }
+                    </div>
+                  }
+                </div>
               }
             </div>
           </div>
@@ -97,6 +114,8 @@ export class ApiKeyModal {
   showKey = signal(false);
   isChecking = signal(false);
   error = signal<string | null>(null);
+  debugInfo = signal<unknown>(null);
+  showDebug = signal(false);
 
   constructor() {
     // Initial value if provided
@@ -118,6 +137,7 @@ export class ApiKeyModal {
           this.saveKey.emit(this.keyControl.value);
         } else {
           this.error.set(result.error || 'Chave inválida ou erro na API');
+          this.debugInfo.set(result.debug || null);
         }
       });
     }

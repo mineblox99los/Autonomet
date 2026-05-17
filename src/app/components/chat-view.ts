@@ -66,7 +66,8 @@ import { Sidebar } from './sidebar';
             [history]="gemini.chatHistory()" 
             [isLoading]="gemini.isLoading()"
             [elapsedTime]="gemini.elapsedTime()"
-            [status]="gemini.workingStatus()">
+            [status]="gemini.workingStatus()"
+            (openSettings)="isApiKeyModalOpen.set(true)">
           </app-chat-history>
         }
 

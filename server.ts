@@ -45,25 +45,21 @@ app.post('/api/validate-key', async (req, res) => {
     const { apiKey } = req.body;
     if (!apiKey) return res.status(400).json({ valid: false, error: 'Chave ausente' });
 
-    const ai = new GoogleGenAI({
-      apiKey,
-      httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
-    });
-
-    const result = await ai.models.generateContent({
+    const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
+    
+    // Minimal request to validate key using the correct @google/genai method
+    await ai.models.generateContent({ 
       model: 'gemini-3-flash-preview',
-      contents: 'echo "ok"',
-      config: { maxOutputTokens: 1 }
+      contents: [{ role: 'user', parts: [{ text: 'hi' }] }] 
     });
-
-    if (result.text) {
-      res.json({ valid: true });
-    } else {
-      res.json({ valid: false, error: 'Resposta vazia' });
-    }
+    
+    res.json({ valid: true });
   } catch (error: any) {
     console.error('Validation Error:', error);
-    res.status(200).json({ valid: false, error: error.message || 'Chave inválida' });
+    res.status(200).json({ 
+      valid: false, 
+      error: 'Chave de API inválida ou sem permissão para o modelo Gemini 3.0 Flash Preview.' 
+    });
   }
 });
 
@@ -71,61 +67,76 @@ app.post('/api/validate-key', async (req, res) => {
  * API Route for Gemini Chat (Streaming)
  */
 app.post('/api/chat', async (req, res) => {
-  console.log('Received chat request:', req.body.model);
   try {
-    const { message, history, apiKey, model: requestedModel, systemInstruction } = req.body;
-    
+    const { message, history, apiKey, systemInstruction, googleSearchEnabled } = req.body;
     const finalApiKey = apiKey || process.env['GEMINI_API_KEY'];
-    const modelToUse = requestedModel || 'gemini-3-flash-preview';
     
     if (!finalApiKey) {
-      return res.status(401).json({ 
-        error: 'Chave de API não encontrada. Por favor, configure a variável GEMINI_API_KEY nos Secrets do projeto ou use uma chave personalizada no menu lateral.' 
-      });
+      return res.status(401).json({ error: 'Chave de API não configurada.' });
     }
 
-    const ai = new GoogleGenAI({
-      apiKey: finalApiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        }
-      }
-    });
+    const ai = new GoogleGenAI({ apiKey: finalApiKey, apiVersion: 'v1beta' });
 
     const contents = (history || []).map((h: any) => ({
       role: h.role,
-      parts: Array.isArray(h.parts) ? h.parts : [{ text: h.parts }]
+      parts: [{ text: h.parts?.[0]?.text || h.parts || '' }]
     }));
     contents.push({ role: 'user', parts: [{ text: message }] });
 
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    const tools: any[] = [];
+    if (googleSearchEnabled) {
+      tools.push({ googleSearch: {} });
+    }
+
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
     res.setHeader('Transfer-Encoding', 'chunked');
 
-    const result = await ai.models.generateContentStream({ 
-      model: modelToUse,
+    // Use correct streaming method for @google/genai
+    const result = await ai.models.generateContentStream({
+      model: 'gemini-3-flash-preview',
       contents,
+      tools: tools.length > 0 ? tools : undefined,
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.7,
+        temperature: 1.0,
         topP: 0.95,
         topK: 64,
+        maxOutputTokens: 8192,
       }
     });
     
     for await (const chunk of result) {
-      const chunkText = chunk.text;
-      if (chunkText) {
-        res.write(chunkText);
+      let chunkText = '';
+      try {
+        chunkText = chunk.text;
+      } catch (e) {
+        // Chunk might not have text, only metadata
       }
+      
+      const responseData: any = { text: chunkText };
+      
+      // Capture grounding metadata if available in this chunk
+      if (chunk.candidates?.[0]?.groundingMetadata) {
+        responseData.groundingMetadata = chunk.candidates[0].groundingMetadata;
+      }
+      
+      res.write(JSON.stringify(responseData) + '\n');
     }
     
     res.end();
   } catch (error: any) {
-    console.error('Gemini API Error:', error);
-    const message = error.message || 'Internal Server Error';
+    console.error('Gemini Stream Error:', error);
+    let statusCode = error.status || 500;
+    let message = 'Ocorreu um erro ao processar sua solicitação.';
+
+    if (statusCode === 429) {
+      message = 'Limite de frequência atingido. Aguarde um momento.';
+    } else if (statusCode === 401 || statusCode === 403) {
+      message = 'Chave de API inválida ou sem permissão.';
+    }
+
     if (!res.headersSent) {
-      res.status(500).json({ error: message });
+      res.status(statusCode).json({ error: message });
     } else {
       res.end();
     }
@@ -149,17 +160,10 @@ app.use(
 const commonEngine = new AngularNodeAppEngine();
 
 app.get(/.*/, (req, res, next) => {
-  // If request is for a file that doesn't exist, it might be an Angular route
-  // We want to avoid SSR as requested.
-  
-  // In development mode, we should let Vite handle the request if it's not an API call
-  // so it correctly serves the index or handles client-side routing.
-  if (process.env['NODE_ENV'] !== 'production') {
-    return next();
-  }
-  
-  // In production, we serve the static index.html
-  res.sendFile(resolve(browserDistFolder, 'index.html'));
+  commonEngine
+    .handle(req)
+    .then((r) => (r ? writeResponseToNodeResponse(r, res) : next()))
+    .catch(next);
 });
 
 /**

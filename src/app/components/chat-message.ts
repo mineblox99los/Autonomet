@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, inject, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
@@ -27,6 +27,26 @@ import { ActionHistory } from './action-history';
             <span class="w-1 h-1 rounded-full bg-zinc-700"></span>
             <span>{{ message().responseTime ? 'Ran for ' + message().responseTime + 's' : 'Instant response' }}</span>
           </div>
+
+          <!-- Thinking Process (Reasoning) -->
+          @if (message().thinking) {
+            <div class="mb-3 ml-1 animate-in fade-in slide-in-from-left-2 duration-500">
+              <button 
+                (click)="isThinkingExpanded.set(!isThinkingExpanded())"
+                class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/10 text-blue-400 transition-all group"
+              >
+                <mat-icon class="!text-[16px] animate-pulse">psychology</mat-icon>
+                <span class="text-[11px] font-semibold uppercase tracking-wider">Expandir Raciocínio</span>
+                <mat-icon class="!text-[16px] transition-transform duration-300" [class.rotate-180]="isThinkingExpanded()">keyboard_arrow_down</mat-icon>
+              </button>
+              
+              @if (isThinkingExpanded()) {
+                <div class="mt-2 p-4 rounded-2xl bg-zinc-900/50 border border-white/5 text-zinc-400 text-xs leading-relaxed font-mono whitespace-pre-wrap animate-in fade-in slide-in-from-top-1 duration-300 max-h-[300px] overflow-y-auto">
+                  {{ message().thinking }}
+                </div>
+              }
+            </div>
+          }
           
           <div class="flex flex-col gap-1.5 w-full min-w-0">
             <!-- Action History -->
@@ -37,6 +57,31 @@ import { ActionHistory } from './action-history';
               <div class="prose prose-invert prose-sm max-w-none leading-relaxed text-[14px] sm:text-[15px] markdown-content overflow-x-auto" 
                    [innerHTML]="cleanParts() | markdown">
               </div>
+
+              <!-- Grounding Sources -->
+              @if (message().groundingMetadata; as metadata) {
+                @if (metadata.groundingChunks) {
+                  <div class="mt-6 pt-4 border-t border-white/5 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <div class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-1.5 ml-1">
+                      <mat-icon class="!text-[14px] !w-3.5 !h-3.5">travel_explore</mat-icon>
+                      Fontes de Pesquisa
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      @for (chunk of metadata.groundingChunks; track $index) {
+                        @if (chunk.web) {
+                          <a [href]="chunk.web.uri" target="_blank" 
+                             class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-900/50 border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group no-underline">
+                            <span class="text-[11px] font-medium text-zinc-400 group-hover:text-blue-400 truncate max-w-[180px]">
+                              {{ chunk.web.title || chunk.web.uri }}
+                            </span>
+                            <mat-icon class="!text-[12px] !w-3 !h-3 text-zinc-600 group-hover:text-blue-400">open_in_new</mat-icon>
+                          </a>
+                        }
+                      }
+                    </div>
+                  </div>
+                }
+              }
               
               <!-- Footer Actions -->
               <div class="flex items-center gap-3 sm:gap-4 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -62,6 +107,7 @@ import { ActionHistory } from './action-history';
 export class ChatMessage {
   message = input.required<Message>();
   sanitizer = inject(DomSanitizer);
+  isThinkingExpanded = signal(false);
 
   cleanParts = computed(() => {
     return this.message().parts.replace(/<action_history>[\s\S]*?<\/action_history>/g, '').trim();

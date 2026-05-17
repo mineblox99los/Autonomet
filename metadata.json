@@ -1,6 +1,8 @@
 {
-  "name": "Superintelligence",
-  "description": "A polished mobile interface for AI interaction, featuring an interactive prompt area powered by advanced AI.",
+  "name": "Gemini AI Studio",
+  "description": "A polished clone of the Google AI Studio mobile interface, featuring an interactive prompt area and Gemini AI integration.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

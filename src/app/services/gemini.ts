@@ -2,10 +2,23 @@ import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core
 import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
 
+export interface GroundingChunk {
+  web?: {
+    uri: string;
+    title?: string;
+  };
+}
+
+export interface GroundingMetadata {
+  groundingChunks?: GroundingChunk[];
+}
+
 export interface Message {
   role: 'user' | 'model';
   parts: string;
+  thinking?: string;
   responseTime?: number;
+  groundingMetadata?: GroundingMetadata;
 }
 
 export interface ChatSession {
@@ -22,23 +35,23 @@ export class GeminiService {
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
   private userApiKey = signal<string | null>(this.isBrowser() ? localStorage.getItem('user_gemini_api_key') : null);
-  private selectedModel = signal<string>(this.isBrowser() ? localStorage.getItem('selected_gemini_model') || 'gemini-3-flash-preview' : 'gemini-3-flash-preview');
+  isGoogleSearchEnabled = signal<boolean>(this.isBrowser() ? localStorage.getItem('google_search_enabled') === 'true' : false);
   
-  availableModels = [
-    { id: 'gemini-3-flash-preview', name: 'Gemini 3.0 Flash', description: 'Rápido e versátil' },
-    { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', description: 'Leve e otimizado' },
-    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', description: 'Máxima inteligência' }
-  ];
+  toggleGoogleSearch() {
+    const newValue = !this.isGoogleSearchEnabled();
+    this.isGoogleSearchEnabled.set(newValue);
+    if (this.isBrowser()) {
+      localStorage.setItem('google_search_enabled', String(newValue));
+    }
+  }
 
   getSelectedModel() {
-    return this.selectedModel();
+    return 'gemini-3-flash-preview';
   }
 
   setSelectedModel(modelId: string) {
-    if (this.isBrowser()) {
-      localStorage.setItem('selected_gemini_model', modelId);
-    }
-    this.selectedModel.set(modelId);
+    // No-op as we only use one model
+    console.log('Selected model:', modelId);
   }
   
   private isBrowser(): boolean {
@@ -56,29 +69,21 @@ export class GeminiService {
     localStorage.setItem('gemini_chat_sessions', JSON.stringify(this.sessions()));
   }
 
-  private readonly SYSTEM_INSTRUCTION = `Você é a Superintelligence, uma assistente de IA prestativa. Responda de forma concisa e eficaz usando Markdown.
-  
-Se você for solicitado a criar, modificar ou mostrar código de arquivos, você DEVE usar uma estrutura especial chamada "Action History".
-Isso ajuda o usuário a ver as mudanças de forma organizada.
+  private readonly SYSTEM_INSTRUCTION = `Você é a Superintelligence, uma assistente de IA de última geração com capacidades avançadas de raciocínio, execução de código e pesquisa em tempo real.
 
-Para usar o Action History, envolva a lista de arquivos entre as tags <action_history> e cada arquivo entre as tags <file path="caminho/do/arquivo.ts">.
+Responda de forma concisa e eficaz usando Markdown. Você possui as seguintes capacidades "Full Potential":
+1. **Pesquisa Google**: Você pode realizar pesquisas em tempo real para fornecer informações atualizadas.
+2. **Execução de Código**: Você pode executar blocos de código para validar algoritmos ou realizar cálculos complexos.
+3. **Visualização de Dados**: Se solicitado a criar gráficos ou visualizações, você pode sugerir o uso da biblioteca D3.js.
 
-Exemplo de uso:
-"Claro, aqui estão as mudanças para o seu app:
-
+Se você for solicitado a criar, modificar ou mostrar código de arquivos, você DEVE usar a estrutura "Action History":
 <action_history>
-<file path="src/app/main.ts">
-import { bootstrap } from '@angular/core';
-// ... código ...
-</file>
-<file path="src/styles.css">
-body { background: #000; }
+<file path="caminho/do/arquivo.ts">
+// conteúdo
 </file>
 </action_history>
 
-Espero que isso ajude!"
-
-Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas o conteúdo puro do arquivo.`;
+Não use blocos de código markdown (\` \` \`) dentro da tag <file>.`;
 
   private sessions = signal<ChatSession[]>(this.loadSessionsFromStorage());
   private activeSessionId = signal<string | null>(null);
@@ -138,10 +143,22 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: key })
       });
-      if (!response.ok) return { valid: false, error: 'Erro no servidor' };
-      return await response.json() as { valid: boolean; error?: string };
-    } catch (_error) {
-      return { valid: false, error: 'Erro de conexão' };
+      
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          return { valid: false, error: `Erro no servidor: ${response.status} ${response.statusText}`, debug: null };
+        }
+        return { valid: false, error: errorData.error || 'Erro interno do servidor', debug: errorData.debug || errorData };
+      }
+      
+      return await response.json() as { valid: boolean; error?: string; debug?: unknown };
+    } catch (e: unknown) {
+      console.error('Fetch error during key validation:', e);
+      const error = e as Error;
+      return { valid: false, error: `Erro de conexão: ${error.message || 'Verifique sua internet ou se o servidor está ativo.'}`, debug: e };
     }
   }
 
@@ -155,11 +172,11 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
     const startTime = performance.now();
 
     const statusUpdates = [
-      'Analyzing request...',
-      'Planning response...',
-      'Drafting content...',
-      'Refining answer...',
-      'Finalizing...'
+      'Analisando solicitação...',
+      'Planejando resposta...',
+      'Redigindo conteúdo...',
+      'Refinando resposta...',
+      'Finalizando...'
     ];
     let statusIndex = 0;
 
@@ -195,8 +212,8 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
           message: trimmedPrompt,
           history,
           apiKey: this.userApiKey(),
-          model: this.selectedModel(),
-          systemInstruction: this.SYSTEM_INSTRUCTION
+          systemInstruction: this.SYSTEM_INSTRUCTION,
+          googleSearchEnabled: this.isGoogleSearchEnabled()
         })
       });
 
@@ -211,29 +228,48 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
       
       let accumulatedText = '';
       let chunksReceived = 0;
+      let buffer = '';
       
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        const chunkStr = decoder.decode(value, { stream: true });
+        buffer += chunkStr;
 
-        chunksReceived++;
-        if (chunksReceived === 1) {
-          this.workingStatus.set('Responding...');
-          if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = undefined;
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep the last incomplete line in the buffer
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          
+          try {
+            const data = JSON.parse(line);
+            if (data.text) accumulatedText += data.text;
+            
+            chunksReceived++;
+            if (chunksReceived === 1) {
+              this.workingStatus.set('Responding...');
+              if (this.timerInterval) {
+                clearInterval(this.timerInterval);
+                this.timerInterval = undefined;
+              }
+            }
+
+            this.chatHistory.update(history => {
+              const lastIndex = history.length - 1;
+              const updatedHistory = [...history];
+              updatedHistory[lastIndex] = { 
+                ...updatedHistory[lastIndex], 
+                parts: accumulatedText,
+                groundingMetadata: data.groundingMetadata || updatedHistory[lastIndex].groundingMetadata
+              };
+              return updatedHistory;
+            });
+          } catch (e) {
+            console.error('Error parsing NDJSON line:', e, line);
           }
         }
 
-        const chunk = decoder.decode(value, { stream: true });
-        accumulatedText += chunk;
-        
-        this.chatHistory.update(history => {
-          const lastIndex = history.length - 1;
-          const updatedHistory = [...history];
-          updatedHistory[lastIndex] = { ...updatedHistory[lastIndex], parts: accumulatedText };
-          return updatedHistory;
-        });
+        if (done) break;
       }
 
       const endTime = performance.now();
