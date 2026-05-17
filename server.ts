@@ -1,3 +1,9 @@
+import {
+  AngularNodeAppEngine,
+  createNodeRequestHandler,
+  isMainModule,
+  writeResponseToNodeResponse,
+} from '@angular/ssr/node';
 import express from 'express';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -138,9 +144,21 @@ app.use(
 );
 
 /**
- * CSR Fallback
+ * CSR Fallback & Angular Integration
  */
-app.get(/.*/, (req, res) => {
+const commonEngine = new AngularNodeAppEngine();
+
+app.get(/.*/, (req, res, next) => {
+  // If request is for a file that doesn't exist, it might be an Angular route
+  // We want to avoid SSR as requested.
+  
+  // In development mode, we should let Vite handle the request if it's not an API call
+  // so it correctly serves the index or handles client-side routing.
+  if (process.env['NODE_ENV'] !== 'production') {
+    return next();
+  }
+  
+  // In production, we serve the static index.html
   res.sendFile(resolve(browserDistFolder, 'index.html'));
 });
 
@@ -148,6 +166,13 @@ app.get(/.*/, (req, res) => {
  * Start the server
  */
 const port = process.env['PORT'] || 3000;
-app.listen(port, () => {
-  console.log(`Node Server listening on http://localhost:${port}`);
-});
+if (isMainModule(import.meta.url)) {
+  app.listen(port, () => {
+    console.log(`Node Server listening on http://localhost:${port}`);
+  });
+}
+
+/**
+ * Export for SSR runner (Required for Angular Dev Server Integration)
+ */
+export const reqHandler = createNodeRequestHandler(app);
