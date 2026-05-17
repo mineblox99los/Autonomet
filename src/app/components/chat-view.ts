@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -22,12 +22,89 @@ import { Sidebar } from './sidebar';
           <div class="flex items-center gap-3">
             <button 
               (click)="toggleSidebar()"
-              class="w-10 h-10 flex items-center justify-center rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 active:bg-blue-500/20 active:ring-1 active:ring-blue-500/40 transition-all"
+              class="w-10 h-10 flex items-center justify-center rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 active:bg-blue-500/20 active:ring-1 active:ring-blue-500/40 transition-all font-medium"
               id="sidebar-toggle-btn"
             >
               <mat-icon>{{ isSidebarOpen() ? 'close' : 'menu' }}</mat-icon>
             </button>
             
+            <div class="h-6 w-px bg-gemini-border mx-1"></div>
+
+            <div class="flex items-center gap-2">
+              <!-- Settings Dropdown Trigger -->
+              <div class="relative header-dropdown-container">
+                <button 
+                  (click)="isSettingsMenuOpen.set(!isSettingsMenuOpen())"
+                  class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors text-zinc-400 hover:text-white"
+                  aria-label="Configurações de API"
+                >
+                  <mat-icon class="!text-[20px]">settings</mat-icon>
+                  <span class="text-xs font-medium hidden sm:inline">Ajustes</span>
+                </button>
+
+                @if (isSettingsMenuOpen()) {
+                  <div class="absolute top-full left-0 mt-2 w-56 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl p-3 z-[100] animate-in fade-in zoom-in-95 duration-200">
+                    <div class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-3 px-1">Configurações de API</div>
+                    
+                    <div class="bg-black/20 rounded-lg px-3 py-2.5 mb-3 border border-white/5">
+                      <code class="text-[10px] text-zinc-400 truncate leading-none block">
+                        {{ maskedKey() }}
+                      </code>
+                    </div>
+
+                    <button 
+                      (click)="openApiKeyModal()"
+                      class="w-full text-left text-xs px-2 py-1.5 rounded-lg text-blue-400 hover:bg-blue-400/5 active:bg-blue-400/10 transition-colors font-medium flex items-center gap-2"
+                    >
+                      <mat-icon class="!text-[16px]">key</mat-icon>
+                      Gerenciar Chave
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <!-- Model Selector (to the right of settings) -->
+              <div class="relative model-dropdown-container">
+                <div class="flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group"
+                     (click)="isModelMenuOpen.set(!isModelMenuOpen())"
+                     (keydown.enter)="isModelMenuOpen.set(!isModelMenuOpen())"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Selecionar modelo">
+                  <span class="text-sm font-medium text-zinc-200">
+                    {{ getModelName(gemini.getSelectedModel()) }}
+                  </span>
+                  <mat-icon class="!text-[18px] text-zinc-500 group-hover:text-zinc-300 transition-colors">keyboard_arrow_down</mat-icon>
+                </div>
+                
+                @if (isModelMenuOpen()) {
+                  <div class="absolute top-full left-0 mt-2 w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 z-[100]">
+                    <div class="p-2 space-y-1">
+                      @for (model of gemini.availableModels; track model.id) {
+                        <button 
+                          (click)="selectModel(model.id, $event)"
+                          class="w-full text-left px-3 py-2.5 rounded-lg transition-all flex flex-col gap-0.5"
+                          [class]="gemini.getSelectedModel() === model.id ? 'bg-blue-500/10 border border-blue-500/20' : 'hover:bg-white/5 border border-transparent'"
+                        >
+                          <div class="flex items-center justify-between w-full">
+                            <span class="text-sm font-medium" [class.text-blue-400]="gemini.getSelectedModel() === model.id" [class.text-zinc-200]="gemini.getSelectedModel() !== model.id">
+                              {{ model.name }}
+                            </span>
+                            @if (gemini.getSelectedModel() === model.id) {
+                              <mat-icon class="!text-[18px] text-blue-400">check</mat-icon>
+                            }
+                          </div>
+                          <span class="text-[10px] text-zinc-500">{{ model.description }}</span>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
             @if (gemini.chatHistory().length > 0) {
               <span class="text-sm font-medium text-zinc-300 animate-in fade-in duration-300">Superintelligence</span>
             }
@@ -128,6 +205,40 @@ export class ChatView {
   gemini = inject(GeminiService);
   isApiKeyModalOpen = signal(false);
   isSidebarOpen = signal(false);
+  isModelMenuOpen = signal(false);
+  isSettingsMenuOpen = signal(false);
+
+  maskedKey = computed(() => {
+    const key = this.gemini.getApiKey();
+    if (!key) return 'Chave padrão ativada';
+    return `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
+  });
+
+  @HostListener('window:click', ['$event'])
+  onWindowClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (this.isModelMenuOpen() && !target.closest('.model-dropdown-container')) {
+      this.isModelMenuOpen.set(false);
+    }
+    if (this.isSettingsMenuOpen() && !target.closest('.header-dropdown-container')) {
+      this.isSettingsMenuOpen.set(false);
+    }
+  }
+
+  getModelName(id: string) {
+    return this.gemini.availableModels.find(m => m.id === id)?.name || id;
+  }
+
+  selectModel(id: string, event: Event) {
+    event.stopPropagation();
+    this.gemini.setSelectedModel(id);
+    this.isModelMenuOpen.set(false);
+  }
+
+  openApiKeyModal() {
+    this.isSettingsMenuOpen.set(false);
+    this.isApiKeyModalOpen.set(true);
+  }
 
   sendMessage(prompt: string) {
     this.gemini.sendMessage(prompt);

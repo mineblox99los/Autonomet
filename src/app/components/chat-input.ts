@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, output, input, signal, HostListener, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, output, input, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { ReactiveFormsModule, FormControl } from '@angular/forms';
@@ -39,32 +39,6 @@ import { ReactiveFormsModule, FormControl } from '@angular/forms';
                 </div>
               }
             </div>
-
-            <button 
-              (click)="toggleDropdown($event)"
-              class="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:bg-white/5 active:bg-blue-500/30 transition-all"
-            >
-              <mat-icon class="scale-90">add_circle_outline</mat-icon>
-            </button>
-
-            @if (isDropdownOpen()) {
-              <div class="absolute bottom-full left-0 mb-3 w-56 bg-gemini-surface border border-gemini-border rounded-xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-200">
-                <div class="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-3 px-1">Configurações de API</div>
-                
-                <div class="bg-black/20 rounded-lg px-3 py-2.5 mb-3 border border-white/5">
-                  <code class="text-[11px] text-zinc-400 truncate leading-none block">
-                    {{ maskedKey() }}
-                  </code>
-                </div>
-
-                <button 
-                  (click)="openApiKeyModal.emit()"
-                  class="w-full text-left text-[13px] px-2 py-1.5 rounded-lg text-blue-400 hover:bg-blue-400/5 active:bg-blue-400/10 transition-colors font-medium"
-                >
-                  Configurar Chave de API
-                </button>
-              </div>
-            }
           </div>
           
           <button 
@@ -88,14 +62,7 @@ export class ChatInput {
   openApiKeyModal = output<void>();
 
   promptControl = new FormControl('');
-  isDropdownOpen = signal(false);
   isMicDropdownOpen = signal(false);
-
-  maskedKey = computed(() => {
-    const key = this.currentKey();
-    if (!key) return 'Chave padrão ativada';
-    return `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
-  });
 
   handleEnter(event: Event) {
     event.preventDefault();
@@ -118,17 +85,11 @@ export class ChatInput {
     }
   }
 
-  toggleDropdown(event: Event) {
-    event.stopPropagation();
-    this.isDropdownOpen.update(v => !v);
-  }
-
   @HostListener('window:click', ['$event'])
   onWindowClick(event: MouseEvent) {
-    if (this.isDropdownOpen() || this.isMicDropdownOpen()) {
+    if (this.isMicDropdownOpen()) {
       const target = event.target as HTMLElement;
       if (!target.closest('.dropdown-container')) {
-        this.isDropdownOpen.set(false);
         this.isMicDropdownOpen.set(false);
       }
     }

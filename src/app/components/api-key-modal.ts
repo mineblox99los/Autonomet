@@ -1,13 +1,12 @@
-import { Component, ChangeDetectionStrategy, output, input, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, output, input, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { UsageMonitor } from './usage-monitor';
-
+import { GeminiService } from '../services/gemini';
 @Component({
   selector: 'app-api-key-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatIconModule, UsageMonitor],
+  imports: [CommonModule, ReactiveFormsModule, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
@@ -16,7 +15,8 @@ import { UsageMonitor } from './usage-monitor';
         <div class="px-6 py-5 border-b border-gemini-border flex items-center justify-between shrink-0">
           <div>
             <h2 class="text-lg font-semibold text-white">Configurações de API</h2>
-            <p class="text-xs text-zinc-400">Gerencie sua chave e monitore seu uso</p>
+            <p class="text-xs text-zinc-400">Gerencie sua chave para o chat</p>
+            <p class="text-[10px] text-zinc-600 mt-0.5">Build v1.1.2</p>
           </div>
           <button (click)="closeModal.emit()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-zinc-500 hover:text-white transition-all active:scale-95">
             <mat-icon class="!text-[20px]">close</mat-icon>
@@ -25,13 +25,6 @@ import { UsageMonitor } from './usage-monitor';
 
         <!-- Body -->
         <div class="p-6 overflow-y-auto">
-          <!-- Usage Monitor Section -->
-          <div class="mb-8">
-            <app-usage-monitor></app-usage-monitor>
-          </div>
-
-          <div class="h-px bg-white/5 w-full mb-8"></div>
-
           <p class="text-sm text-zinc-300 mb-6 leading-relaxed">
             Sua chave é armazenada localmente no seu navegador. Você pode obter uma chave gratuita na 
             <a href="https://aistudio.google.com/api-keys" target="_blank" class="text-blue-400 hover:underline">Plataforma de Desenvolvedor</a>.
@@ -58,21 +51,31 @@ import { UsageMonitor } from './usage-monitor';
                   </mat-icon>
                 </button>
               </div>
+              @if (error()) {
+                <p class="mt-2 text-xs text-red-400 flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
+                  <mat-icon class="!text-[14px] !w-3.5 !h-3.5">error_outline</mat-icon>
+                  {{ error() }}
+                </p>
+              }
             </div>
           </div>
 
           <div class="mt-8 flex items-center gap-3">
             <button 
               (click)="save()"
-              [disabled]="keyControl.invalid"
-              class="flex-1 bg-white text-black font-semibold py-3 rounded-xl hover:bg-zinc-200 transition-all disabled:opacity-50 disabled:grayscale"
+              [disabled]="keyControl.invalid || isChecking()"
+              class="flex-1 bg-white text-black font-semibold py-3 rounded-xl hover:bg-zinc-200 transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2"
             >
-              Confirmar Chave
+              @if (isChecking()) {
+                <mat-icon class="animate-spin !text-[20px]">refresh</mat-icon>
+              }
+              {{ isChecking() ? 'Verificando...' : 'Confirmar Chave' }}
             </button>
             @if (currentKey()) {
               <button 
                 (click)="clear()"
-                class="px-4 py-3 rounded-xl border border-red-500/30 text-red-400 text-sm font-medium hover:bg-red-500/10 transition-all"
+                [disabled]="isChecking()"
+                class="px-4 py-3 rounded-xl border border-red-500/30 text-red-400 text-sm font-medium hover:bg-red-500/10 transition-all disabled:opacity-50"
               >
                 Limpar
               </button>
@@ -89,8 +92,11 @@ export class ApiKeyModal {
   clearKey = output<void>();
   closeModal = output<void>();
 
+  gemini = inject(GeminiService);
   keyControl = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(20)] });
   showKey = signal(false);
+  isChecking = signal(false);
+  error = signal<string | null>(null);
 
   constructor() {
     // Initial value if provided
@@ -103,7 +109,17 @@ export class ApiKeyModal {
 
   save() {
     if (this.keyControl.valid) {
-      this.saveKey.emit(this.keyControl.value);
+      this.isChecking.set(true);
+      this.error.set(null);
+      
+      this.gemini.validateApiKey(this.keyControl.value).then(result => {
+        this.isChecking.set(false);
+        if (result.valid) {
+          this.saveKey.emit(this.keyControl.value);
+        } else {
+          this.error.set(result.error || 'Chave inválida ou erro na API');
+        }
+      });
     }
   }
 

@@ -2,12 +2,11 @@ import { Component, ChangeDetectionStrategy, output, input, signal } from '@angu
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { ChatSession } from '../services/gemini';
-import { PromotionCard } from './promotion-card';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, MatIconModule, PromotionCard],
+  imports: [CommonModule, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <!-- Overlay for mobile -->
@@ -17,7 +16,7 @@ import { PromotionCard } from './promotion-card';
       role="presentation"
     ></div>
 
-    <!-- Sidebar content -->
+      <!-- Sidebar content -->
     <aside 
       class="fixed inset-y-0 left-0 w-[240px] bg-gemini-surface border-r border-gemini-border z-[90] flex flex-col pt-4 overflow-hidden animate-in slide-in-from-left duration-300 ease-out shadow-2xl"
       role="navigation"
@@ -73,10 +72,7 @@ import { PromotionCard } from './promotion-card';
         }
       </div>
 
-      <!-- Advertisement / Promotions -->
-      <app-promotion-card></app-promotion-card>
-
-      <!-- Bottom Profile/Status (Optional) -->
+      <!-- Bottom Profile/Status -->
       <div class="p-4 border-t border-gemini-border mt-auto relative">
         <!-- Dropdown Menu -->
         @if (isProfileMenuOpen()) {
