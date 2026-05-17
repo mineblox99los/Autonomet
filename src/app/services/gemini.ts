@@ -140,7 +140,7 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
       });
       if (!response.ok) return { valid: false, error: 'Erro no servidor' };
       return await response.json() as { valid: boolean; error?: string };
-    } catch (error) {
+    } catch (_error) {
       return { valid: false, error: 'Erro de conexão' };
     }
   }
@@ -212,7 +212,6 @@ Não adicione blocos de código markdown (\` \` \`) dentro da tag <file>, apenas
       let accumulatedText = '';
       let chunksReceived = 0;
       
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
