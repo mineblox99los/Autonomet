@@ -6,7 +6,6 @@ import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { ResizablePatternImports } from './ui-patterns/resizable';
-import { ScrollArea } from './ui-patterns/scroll-area';
 import { HlmTypographyImports } from '@spartan-ng/helm/typography';
 import { HlmAlertDialogImports } from '@spartan-ng/helm/alert-dialog';
 import { BrnAlertDialogImports } from '@spartan-ng/brain/alert-dialog';
@@ -18,7 +17,6 @@ import { PageSection } from './ui-patterns/page-section';
 import { InfoTooltip } from './ui-patterns/info-tooltip';
 import { DataInput } from './ui-patterns/data-input';
 import { StatusCode } from './ui-patterns/status-code';
-import { ErrorDisplay } from './ui-patterns/error-display';
 import { TextConfirmDialog } from './ui-patterns/text-confirm-dialog';
 import { FormItemLayout } from './ui-patterns/form-item-layout';
 import { 
@@ -52,14 +50,12 @@ import { StorageService, Agent } from './storage.service';
     HlmInput,
     HlmCardImports,
     ResizablePatternImports,
-    ScrollArea,
     HlmTypographyImports,
     HlmAlertDialogImports,
     BrnAlertDialogImports,
     InfoTooltip,
     DataInput,
     StatusCode,
-    ErrorDisplay,
     TextConfirmDialog,
     FormItemLayout,
     HlmIconImports,

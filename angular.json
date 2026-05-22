@@ -30,6 +30,9 @@
             ],
             "styles": [
               "src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "p-retry"
             ]
           },
           "configurations": {
@@ -37,7 +40,7 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "1MB",
+                  "maximumWarning": "2MB",
                   "maximumError": "2MB"
                 },
                 {

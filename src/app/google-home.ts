@@ -9,7 +9,6 @@ import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
 import { HlmTooltipImports } from '@spartan-ng/helm/tooltip';
 import { HlmTypographyImports } from '@spartan-ng/helm/typography';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
-import { ScrollArea } from './ui-patterns/scroll-area';
 import { AppFooter } from './app-footer';
 import { provideIcons } from '@ng-icons/core';
 import { NotificationService } from './notification.service';
@@ -48,7 +47,6 @@ import {
     HlmTooltipImports,
     HlmTypographyImports,
     HlmAlertImports,
-    ScrollArea,
     AppFooter
   ],
   providers: [
