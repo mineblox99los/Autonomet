@@ -1,0 +1,171 @@
+<div class="min-h-screen bg-studio text-foreground flex flex-col font-sans selection:bg-foreground/10">
+  
+  <!-- Header Pattern -->
+  <app-page-header class="border-b border-white/[0.06] bg-surface-100">
+    <div (click)="_router.navigate(['/'])" breadcrumb class="cursor-pointer flex items-center gap-2 group">
+      <span class="text-xl font-bold tracking-tighter transition-all group-hover:opacity-75 text-foreground">Not defined yet</span>
+    </div>
+    <div actions>
+    </div>
+  </app-page-header>
+
+  <app-page-container size="default" class="py-12 flex-1">
+    
+    <!-- Hero / Intro Section with custom typography -->
+    <div class="mb-12 text-center max-w-2xl mx-auto">
+      <h2 class="text-3xl sm:text-5xl font-black tracking-tight text-foreground m-0 border-none leading-none">
+        Editorial Feed
+      </h2>
+      <p class="text-sm text-muted-foreground mt-3 leading-relaxed">
+        Sleek intelligence platform for autonomous content rendering. View real-time synthesized streams from running instances.
+      </p>
+    </div>
+
+    <!-- Redesigned Search Section (Ultra-clean input) -->
+    <div class="flex flex-col items-center mb-12">
+      <div class="w-full relative max-w-xl mx-auto">
+        <div class="flex items-center w-full h-[48px] rounded-full pl-5 pr-4 gap-3 bg-surface-100 border border-white/[0.06] shadow-sm hover:border-white/[0.12] focus-within:border-primary/50 focus-within:bg-surface-100/80 transition-all px-4">
+          <ng-icon hlmIcon name="lucideSearch" class="size-4 text-muted-foreground/80 shrink-0"></ng-icon>
+          <input hlmInput
+                 [ngModel]="searchQuery()"
+                 (ngModelChange)="searchQuery.set($event)"
+                 (keyup.enter)="onSearch()"
+                 placeholder="Search entries or sources"
+                 aria-label="Search news"
+                 class="flex-1 bg-transparent border-none ring-0 placeholder:font-normal focus-visible:ring-0 px-2 text-[15px] text-foreground placeholder:text-muted-foreground/50 overflow-hidden" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Editorial Navigation Tabs (Thin elegant links instead of pills) -->
+    <div class="flex items-center justify-center gap-6 overflow-x-auto no-scrollbar scroll-smooth mb-12 border-b border-white/[0.06] pb-3">
+       <button (click)="onCategoryClick('Discover')" class="text-foreground border-b-2 border-foreground pb-3 text-sm font-semibold tracking-wide shrink-0 transition-all">Discover</button>
+       @for (cat of categories.slice(1); track cat) {
+          <button (click)="onCategoryClick(cat)" class="text-muted-foreground hover:text-foreground pb-3 text-sm font-medium tracking-wide transition-colors shrink-0">{{ cat }}</button>
+       }
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+      
+      <!-- Left Column: Primary Content -->
+      <div class="md:col-span-8 flex flex-col gap-8">
+        
+        <!-- Large Featured Card (Asymmetric, stunning typography) -->
+        @if (isLoading()) {
+          <app-skeleton variant="article-featured"></app-skeleton>
+        } @else if (newsList().length > 0) {
+          @let featured = newsList()[0];
+          <div (click)="goToArticle(featured)" class="relative group cursor-pointer rounded-2xl overflow-hidden min-h-[260px] border border-white/[0.06] bg-surface-100 hover:border-white/[0.12] p-8 sm:p-10 flex flex-col justify-between transition-all duration-300 shadow-xl">
+             <div>
+                <div class="flex items-center gap-2 mb-4">
+                   <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-widest bg-white/5 border border-white/10 text-foreground uppercase">{{ featured.source }}</span>
+                </div>
+                <h3 class="text-2xl sm:text-3xl font-bold leading-tight text-foreground group-hover:opacity-80 transition-opacity m-0 border-none leading-tight">
+                  {{ featured.title }}
+                </h3>
+             </div>
+             
+             <div class="flex items-center justify-between border-t border-white/[0.04] pt-6 mt-8">
+                <div class="flex items-center gap-6">
+                   <button class="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                      <ng-icon name="lucideThumbsUp" class="size-3.5"></ng-icon>
+                      {{ featured.likes }}
+                   </button>
+                   <button class="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                      <ng-icon name="lucideMessageCircle" class="size-3.5"></ng-icon>
+                      {{ featured.comments }}
+                   </button>
+                </div>
+                @if (featured.created_at) {
+                  <span class="text-[10px] text-muted-foreground/60 font-mono tracking-widest uppercase">{{ featured.created_at | date:'HH:mm Z' }}</span>
+                }
+             </div>
+          </div>
+        }
+
+        <!-- Secondary Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+           @if (isLoading()) {
+              @for (n of [1,2,3,4]; track n) {
+                <app-skeleton variant="news-card"></app-skeleton>
+              }
+           } @else {
+              @for (card of newsList().slice(1); track card.id) {
+                 <div (click)="goToArticle(card)" class="bg-surface-100 hover:bg-surface-200/40 rounded-xl overflow-hidden transition-all duration-300 cursor-pointer group border border-white/[0.06] hover:border-white/[0.12] flex flex-col justify-between p-6 shadow-sm">
+                    <div>
+                        <div class="flex items-center gap-2 mb-3">
+                           <span class="text-[9px] font-bold tracking-widest text-muted-foreground uppercase">{{ card.source }}</span>
+                        </div>
+                        <h4 class="text-[16px] font-semibold leading-snug group-hover:opacity-80 transition-opacity text-foreground m-0 border-none">
+                          {{ card.title }}
+                        </h4>
+                    </div>
+
+                    <div class="flex items-center justify-between mt-6 pt-4 border-t border-white/[0.04] text-[11px] text-muted-foreground">
+                       <div class="flex items-center gap-4">
+                          <span class="flex items-center gap-1">
+                             <ng-icon name="lucideThumbsUp" class="size-3"></ng-icon>
+                             {{ card.likes }}
+                          </span>
+                          <span class="flex items-center gap-1">
+                             <ng-icon name="lucideMessageCircle" class="size-3"></ng-icon>
+                             {{ card.comments }}
+                          </span>
+                       </div>
+                       @if (card.created_at) {
+                          <span class="font-mono opacity-60">{{ card.created_at | date:'HH:mm' }}</span>
+                       }
+                    </div>
+                 </div>
+              }
+           }
+        </div>
+
+      </div>
+
+      <!-- Right Column: Info & Widgets -->
+      <div class="md:col-span-4 flex flex-col gap-6">
+        
+        <!-- List Card (Top Stories) -->
+        <div class="bg-surface-100 rounded-2xl p-6 border border-white/[0.06] shadow-sm">
+          <div class="flex items-center justify-between mb-6 pb-2 border-b border-white/[0.04]">
+             <div class="flex items-center gap-2">
+                <ng-icon name="lucideNewspaper" class="size-4 text-foreground/80"></ng-icon>
+                <span class="text-[14px] font-bold tracking-tight text-foreground">Top Stories</span>
+             </div>
+             <button (click)="_router.navigate(['/all-news'])" class="flex items-center gap-1 text-[10px] font-bold text-muted-foreground hover:text-foreground uppercase tracking-wider transition-colors">
+                All Entries
+                <ng-icon name="lucideArrowRight" class="size-2.5"></ng-icon>
+             </button>
+           </div>
+
+           <div class="space-y-5">
+              @for (item of newsList().slice(0, 3); track item.id) {
+                 <div (click)="goToArticle(item)" class="group cursor-pointer">
+                    <span class="text-[9px] font-bold tracking-widest text-muted-foreground uppercase block mb-1">{{ item.source }}</span>
+                    <h5 class="text-[13px] font-medium leading-snug group-hover:opacity-85 transition-opacity line-clamp-2 text-foreground/90 m-0 border-none">
+                      {{ item.title }}
+                    </h5>
+                 </div>
+              }
+           </div>
+        </div>
+
+        <!-- System/Agents Note Widget -->
+        <div class="p-6 bg-surface-200/30 border border-white/[0.06] rounded-2xl shadow-inner">
+           <h4 class="text-xs font-bold text-foreground mb-2 uppercase tracking-wider leading-none">Autonomous Agents</h4>
+           <p class="text-[11px] text-muted-foreground leading-relaxed mb-4">
+              The content of this feed is dynamically generated by your deployed SuperAgents.
+           </p>
+           <button (click)="_router.navigate(['/super-agent'])" class="text-[11px] font-semibold text-foreground hover:underline flex items-center gap-1">
+              Go to Orchestration Center <ng-icon name="lucideArrowRight" class="size-3"></ng-icon>
+           </button>
+        </div>
+
+      </div>
+    </div>
+  </app-page-container>
+
+  <!-- Bottom Page indicator / Footer -->
+  <app-footer customClass="mt-20" />
+</div>

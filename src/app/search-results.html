@@ -1,0 +1,345 @@
+<div class="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/30">
+  <!-- Top Bar -->
+  <header class="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/40 px-4 sm:px-6 lg:px-8 py-3">
+    <div class="flex items-center gap-4 sm:gap-8 max-w-[1400px] mx-auto">
+      <!-- Logo -->
+      <a (click)="goHome()" class="cursor-pointer select-none shrink-0 hidden sm:flex items-center">
+        <h1 hlmH1 class="text-xl font-bold tracking-tighter hover:opacity-80 transition-opacity border-none lg:text-xl m-0">No Name Defined</h1>
+      </a>
+
+      <!-- Search Input -->
+      <div class="flex-1 max-w-[692px] relative group">
+        <div class="flex items-center w-full h-[44px] rounded-full bg-surface-100 border border-border/60 hover:bg-surface-200 focus-within:bg-background focus-within:shadow-lg focus-within:border-transparent px-4 gap-3">
+          <input hlmInput
+                 [ngModel]="searchQuery()"
+                 (ngModelChange)="searchQuery.set($event)"
+                 (keyup.enter)="onSearch()"
+                 class="flex-1 bg-transparent border-none ring-0 focus-visible:ring-0 px-1 text-[16px] text-foreground placeholder:text-muted-foreground/60 truncate" />
+          
+          <div class="flex items-center gap-1 sm:gap-3 text-muted-foreground mr-1">
+            <button class="hover:text-foreground flex items-center justify-center size-8 rounded-full hover:bg-surface-300">
+              <ng-icon hlmIcon name="lucideX" class="size-4 sm:size-5"></ng-icon>
+            </button>
+            <button (click)="onSearch()" class="text-primary hover:opacity-80 flex items-center justify-center size-8 rounded-full hover:bg-primary/10">
+              <ng-icon hlmIcon name="lucideSearch" class="size-4 sm:size-5"></ng-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- User/Actions -->
+      <div class="flex items-center gap-6 shrink-0">
+        <a routerLink="/news" class="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Not defined yet</a>
+        <div class="size-8 rounded-full bg-surface-300 flex items-center justify-center font-bold text-sm text-foreground shrink-0">M</div>
+      </div>
+    </div>
+ 
+    <!-- Sub Nav -->
+    <div class="max-w-[1400px] mx-auto mt-4 overflow-x-auto no-scrollbar">
+      <div class="flex items-center gap-6 text-[14px] text-muted-foreground font-medium">
+        <button class="text-primary border-b-2 border-primary pb-2 px-1 flex items-center gap-1.5 h-full">All</button>
+        <button class="hover:text-foreground pb-2 px-1 flex items-center gap-1.5 transition-colors"><ng-icon hlmIcon name="lucideImage" class="size-4"></ng-icon> Images</button>
+        <button class="hover:text-foreground pb-2 px-1 flex items-center gap-1.5 transition-colors"><ng-icon hlmIcon name="lucideNewspaper" class="size-4"></ng-icon> Not defined yet</button>
+        <button class="hover:text-foreground pb-2 px-1 flex items-center gap-1.5 transition-colors"><ng-icon hlmIcon name="lucidePlay" class="size-4"></ng-icon> Videos</button>
+        <button class="hover:text-foreground pb-2 px-1 flex items-center gap-1.5 transition-colors"><ng-icon hlmIcon name="lucideTag" class="size-4"></ng-icon> Shopping</button>
+        <button class="hover:text-foreground pb-2 px-1 flex items-center gap-1.5 transition-colors">More <ng-icon hlmIcon name="lucideChevronDown" class="size-4"></ng-icon></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 pt-4 pb-12">
+    <div class="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 px-4 sm:px-6 lg:px-8">
+      
+      <!-- Results Column -->
+      <div class="max-w-[652px]">
+        
+        <!-- Sponsored Section -->
+        <section class="mb-8">
+          <div class="flex items-center justify-between mb-4">
+            <h2 hlmH2 class="text-[18px] font-medium text-foreground border-none">Sponsored results</h2>
+          </div>
+
+          @for (res of sponsoredResults; track res.url) {
+            <div class="group mb-6">
+              <div class="flex items-center gap-3 mb-1">
+                <div class="size-7 rounded-full bg-surface-100 flex items-center justify-center p-1 border border-border/40 overflow-hidden">
+                  <img [src]="res.favicon" alt="Site Favicon" class="size-full object-contain" referrerpolicy="no-referrer" />
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-[14px] text-foreground font-medium truncate max-w-[200px]">{{ res.displayUrl }}</span>
+                  <span class="text-[12px] text-muted-foreground truncate">{{ res.url }}</span>
+                </div>
+              </div>
+              <a [href]="res.url" class="block">
+                <h3 hlmH3 class="text-[20px] text-primary hover:underline font-normal mb-1 leading-tight border-none">{{ res.title }}</h3>
+              </a>
+              <p hlmP class="text-[14px] text-muted-foreground leading-relaxed mt-0">{{ res.description }}</p>
+              
+              @if (res.cta) {
+                <div class="mt-4 p-3 rounded-lg border border-border/40 hover:bg-surface-100 transition-colors cursor-pointer flex items-center justify-between">
+                  <div class="flex flex-col">
+                    <span class="text-primary font-medium text-[14px]">{{ res.cta }}</span>
+                    <span class="text-muted-foreground text-[12px]">{{ res.ctaDesc }}</span>
+                  </div>
+                  <ng-icon hlmIcon name="lucideChevronRight" class="size-5 text-muted-foreground"></ng-icon>
+                </div>
+              }
+            </div>
+          }
+
+          <div class="pt-4 flex justify-center">
+             <button hlmBtn variant="outline" size="sm" class="rounded-full text-[13px] border-border/60 hover:bg-surface-100 px-8">
+               Hide sponsored results <ng-icon hlmIcon name="lucideChevronDown" class="size-4 ml-2"></ng-icon>
+             </button>
+          </div>
+        </section>
+
+        <!-- Images Section -->
+        <section class="mb-10 pt-4 border-t border-border/40">
+          <h2 hlmH2 class="text-[20px] font-medium mb-4 border-none m-0">Images</h2>
+          <div class="grid grid-cols-3 gap-2 sm:gap-4 shrink-0">
+             @for (img of images; track img.src) {
+               <div class="group cursor-pointer">
+                 <div class="aspect-[4/3] rounded-xl overflow-hidden bg-surface-100 border border-border/40 relative">
+                   <img [src]="img.src" alt="Search Result Image" class="size-full object-cover group-hover:scale-105" referrerpolicy="no-referrer" />
+                 </div>
+                 <div class="mt-2 flex flex-col gap-0.5">
+                   <span class="text-[12px] text-foreground truncate font-medium">{{ img.title }}</span>
+                   <div class="flex items-center gap-1">
+                     <div class="size-3 rounded-full bg-surface-300"></div>
+                     <span class="text-[11px] text-muted-foreground truncate">{{ img.owner }}</span>
+                   </div>
+                 </div>
+               </div>
+             }
+          </div>
+          <div class="mt-6 flex justify-center">
+            <button hlmBtn variant="outline" size="sm" class="rounded-full text-[13px] border-border/60 hover:bg-surface-100 px-8">
+              Show more images <ng-icon hlmIcon name="lucideChevronDown" class="size-4 ml-2"></ng-icon>
+            </button>
+          </div>
+        </section>
+
+        <!-- Main Organic News (Placeholder style) -->
+        <section class="mb-10">
+          <h2 hlmH2 class="text-[20px] font-medium mb-2 leading-none pt-4 border-t border-border/40 border-none m-0">Top Stories</h2>
+          <p hlmP class="text-muted-foreground text-sm mb-4 leading-none mt-2">AI-generated songs represent 44% of daily uploads to Deezer</p>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div class="p-4 rounded-xl border border-border/40 bg-surface-100/30 hover:shadow-lg transition-all group cursor-pointer">
+                <div class="aspect-video w-full rounded-lg bg-surface-200 overflow-hidden mb-3">
+                   <img src="https://picsum.photos/seed/news_main/600/400" alt="News Image" class="size-full object-cover group-hover:scale-105" referrerpolicy="no-referrer" />
+                </div>
+                <div class="flex items-center gap-2 mb-2">
+                   <div class="size-4 rounded-full bg-primary/20 flex items-center justify-center shrink-0 h-4 w-4">
+                      <ng-icon name="lucideNewspaper" class="size-2.5 text-primary"></ng-icon>
+                    </div>
+                   <span class="text-[12px] text-muted-foreground">Portal Tela</span>
+                </div>
+                <h3 hlmH3 class="text-[16px] font-medium leading-snug group-hover:text-primary transition-colors border-none m-0">AI represents 44% of tracks on Deezer, indicating rise of automated uploads</h3>
+                <span class="text-[11px] text-muted-foreground mt-2 block">7 minutes ago</span>
+             </div>
+             <!-- Side news items -->
+             <div class="flex flex-col gap-4">
+                <div class="flex gap-3 hover:bg-surface-100 p-2 rounded-lg transition-all cursor-pointer group">
+                   <div class="flex-1">
+                      <div class="flex items-center gap-2 mb-1">
+                         <div class="size-3 rounded-full bg-surface-200"></div>
+                         <span class="text-[11px] text-muted-foreground italic">Exame</span>
+                      </div>
+                      <h4 hlmH4 class="text-[14px] font-medium line-clamp-2 group-hover:text-primary transition-colors border-none m-0">AI already dominates music uploads: 44% of tracks on Deezer are created by...</h4>
+                      <span class="text-[11px] text-muted-foreground mt-1 block">11 minutes ago</span>
+                   </div>
+                   <div class="size-16 rounded-md bg-surface-200 overflow-hidden shrink-0">
+                      <img src="https://picsum.photos/seed/news_sub1/100/100" alt="News Thumbnail" class="size-full object-cover" referrerpolicy="no-referrer" />
+                   </div>
+                </div>
+                <div class="flex gap-3 hover:bg-surface-100 p-2 rounded-lg transition-all cursor-pointer group">
+                   <div class="flex-1">
+                      <div class="flex items-center gap-2 mb-1">
+                         <div class="size-3 rounded-full bg-surface-200"></div>
+                         <span class="text-[11px] text-muted-foreground italic uppercase scale-90 origin-left">DISCUSSING MODERN WORLD</span>
+                      </div>
+                      <h4 hlmH4 class="text-[14px] font-medium line-clamp-2 group-hover:text-primary transition-colors border-none m-0">Music in the era of Artificial Intelligence: emotion, algorithms and the new...</h4>
+                      <span class="text-[11px] text-muted-foreground mt-1 block">5 hours ago</span>
+                   </div>
+                   <div class="size-16 rounded-md bg-surface-200 overflow-hidden shrink-0">
+                      <img src="https://picsum.photos/seed/news_sub2/100/100" alt="News Thumbnail" class="size-full object-cover" referrerpolicy="no-referrer" />
+                   </div>
+                </div>
+             </div>
+          </div>
+          <div class="mt-6 flex justify-center">
+             <button hlmBtn variant="ghost" class="text-primary font-medium flex items-center gap-2 text-[14px]">
+               More news <ng-icon hlmIcon name="lucideChevronRight" class="size-4"></ng-icon>
+             </button>
+          </div>
+        </section>
+
+        <!-- People Also Ask Section -->
+        <section class="mb-10 pt-4 border-t border-border/40">
+          <h2 hlmH2 class="text-[22px] font-normal mb-1 border-none m-0">People also ask</h2>
+          
+          <hlm-accordion class="w-full">
+            @for (item of peopleAlsoAsk; track item.q) {
+              <hlm-accordion-item class="border-b border-border/40 last:border-b-0 py-1">
+                <button hlmAccordionTrigger class="flex items-center justify-between w-full py-3 text-left hover:bg-transparent group">
+                  <span class="text-[16px] font-normal text-foreground">{{ item.q }}</span>
+                  <div class="size-9 rounded-full bg-surface-200 flex items-center justify-center group-data-[state=open]:rotate-180">
+                    <ng-icon hlmIcon name="lucideChevronDown" class="size-5 text-muted-foreground"></ng-icon>
+                  </div>
+                </button>
+                <hlm-accordion-content class="pb-6">
+                  @if (item.a) {
+                    <div class="space-y-6 pt-2">
+                      <p hlmP class="text-[16px] text-foreground/90 leading-relaxed mt-0">
+                        A IA <span class="bg-primary/20 text-foreground px-1 rounded">{{ item.highlight }}</span>. 
+                        {{ item.a.replace(item.highlight, '') }}
+                      </p>
+
+                      @if (item.source) {
+                        <div class="space-y-3 pt-2">
+                          <div class="flex items-center gap-3">
+                            <div class="size-7 rounded-full bg-surface-100 flex items-center justify-center p-1.5 border border-border/20 overflow-hidden shrink-0">
+                              <img [src]="item.source.favicon" alt="Source Favicon" class="size-full object-contain" referrerpolicy="no-referrer" />
+                            </div>
+                            <div class="flex flex-col justify-center min-w-0">
+                              <span class="text-[12px] text-foreground font-medium uppercase tracking-tight leading-none mb-1">{{ item.source.name }}</span>
+                              <span class="text-[11px] text-muted-foreground truncate leading-none">{{ item.source.displayUrl }}</span>
+                            </div>
+                          </div>
+                          <a [href]="item.source.url" class="block text-[18px] text-primary hover:underline font-normal leading-snug">
+                            {{ item.source.title }}
+                          </a>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <p class="text-muted-foreground text-[14px]">
+                      Detailed information about "{{ item.q }}" will be available soon.
+                    </p>
+                  }
+                </hlm-accordion-content>
+              </hlm-accordion-item>
+            }
+          </hlm-accordion>
+        </section>
+
+        <!-- Search Tiles Grid (Related Products Style) -->
+        <section class="mb-10 pt-4 border-t border-border/40">
+          <div class="flex items-center gap-2 mb-4">
+             <h2 hlmH2 class="text-[18px] font-medium border-none m-0">Find related products and services</h2>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+             @for (term of relatedSearches; track term) {
+               <div class="flex items-center justify-between p-4 rounded-xl bg-surface-100 hover:bg-surface-200 transition-colors cursor-pointer group">
+                  <span class="text-[14px] text-foreground font-medium group-hover:text-primary transition-colors">
+                    {{ term.split(' ').slice(0, -1).join(' ') }} <span class="font-bold">{{ term.split(' ').pop() }}</span>
+                  </span>
+                  <ng-icon hlmIcon name="lucideSearch" class="size-4 text-muted-foreground"></ng-icon>
+               </div>
+             }
+          </div>
+          <p class="text-[11px] text-muted-foreground mt-4 italic">These searches help you find relevant offers from advertisers</p>
+        </section>
+
+        <!-- Organic Search Results -->
+        <section class="mb-12">
+          @for (res of organicResults; track res.url) {
+            <div class="mb-8 group">
+               <div class="flex items-center gap-3 mb-1">
+                 <div class="size-7 rounded-full bg-surface-100 flex items-center justify-center p-1 border border-border/40 overflow-hidden">
+                    <img [src]="res.favicon" alt="Site Favicon" class="size-full object-contain" referrerpolicy="no-referrer" />
+                 </div>
+                 <div class="flex flex-col">
+                   <div class="flex items-center gap-2">
+                      <span class="text-[14px] text-foreground font-medium truncate max-w-[200px]">Wikipedia</span>
+                      
+                   </div>
+                   <span class="text-[12px] text-muted-foreground truncate">{{ res.url }}</span>
+                 </div>
+               </div>
+               <a [href]="res.url" class="block">
+                 <h3 hlmH3 class="text-[20px] text-primary hover:underline font-normal mb-1 leading-tight border-none m-0">{{ res.title }}</h3>
+               </a>
+               <p hlmP class="text-[14px] text-muted-foreground leading-relaxed mt-0" [innerHTML]="res.snippet"></p>
+            </div>
+          }
+        </section>
+
+        <!-- Bottom Pagination (Iconic Logo Style) -->
+        <div class="flex flex-col items-center gap-4 py-8 border-t border-border/40">
+           <div class="flex items-center text-[28px] font-bold tracking-tight select-none">
+              <span class="text-primary">G</span>
+              <span class="text-orange-500 italic">oooooooooo</span>
+              <span class="text-primary relative group cursor-pointer">
+                gle
+                <ng-icon hlmIcon name="lucideArrowRight" class="absolute -right-8 top-1/2 -translate-y-1/2 text-primary size-5 group-hover:translate-x-1 transition-transform"></ng-icon>
+              </span>
+           </div>
+           <div class="flex gap-4 text-[13px] text-primary">
+              <span class="text-foreground pointer-events-none">1</span>
+              <span class="cursor-pointer hover:underline">2</span>
+              <span class="cursor-pointer hover:underline">3</span>
+              <span class="cursor-pointer hover:underline">4</span>
+              <span class="cursor-pointer hover:underline">5</span>
+              <span class="cursor-pointer hover:underline">6</span>
+              <span class="cursor-pointer hover:underline">7</span>
+              <span class="cursor-pointer hover:underline">8</span>
+              <span class="cursor-pointer hover:underline">9</span>
+              <span class="cursor-pointer hover:underline">10</span>
+              <span class="ml-4 font-bold cursor-pointer hover:underline">More</span>
+           </div>
+        </div>
+
+      </div>
+
+      <!-- Right Sidebar (Knowledge Panel Style or Related Sidebar) -->
+      <aside class="hidden lg:block space-y-8">
+         <div class="p-6 rounded-2xl border border-border/40 bg-surface-100 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <h2 hlmH2 class="text-xl font-medium border-none m-0">About this result</h2>
+            </div>
+            <div class="space-y-4">
+               <div class="flex items-start gap-3">
+                  <ng-icon hlmIcon name="lucideHistory" class="size-5 text-muted-foreground mt-0.5"></ng-icon>
+                  <div>
+                    <h4 hlmH4 class="text-sm font-medium border-none m-0">Your search history</h4>
+                    <p hlmSmall class="text-xs text-muted-foreground leading-none">You searched for this previously in December 2023.</p>
+                  </div>
+               </div>
+               <div class="flex items-start gap-3">
+                  <ng-icon hlmIcon name="lucideGlobe" class="size-5 text-muted-foreground mt-0.5"></ng-icon>
+                  <div>
+                    <h4 hlmH4 class="text-sm font-medium border-none m-0">Global Relevance</h4>
+                    <p hlmSmall class="text-xs text-muted-foreground leading-none">This topic has been trending globally in the past hour.</p>
+                  </div>
+               </div>
+            </div>
+            <button hlmBtn variant="outline" class="w-full mt-6 rounded-xl border-border/60">Configure interests</button>
+         </div>
+
+         <!-- Right Side Recommendations -->
+         <div class="space-y-4 px-2">
+            <h3 hlmSmall class="text-sm font-medium text-muted-foreground uppercase tracking-wider px-1 leading-none">Recent Topics</h3>
+            @for (i of [1,2,3]; track i) {
+               <div class="flex gap-4 items-center group cursor-pointer">
+                  <div class="size-16 rounded-xl bg-surface-200 shrink-0 overflow-hidden">
+                     <img src="https://picsum.photos/seed/topic_{{i}}/100/100" alt="Topic Image" class="size-full object-cover group-hover:scale-110" referrerpolicy="no-referrer" />
+                  </div>
+                  <div class="flex flex-col gap-0.5">
+                     <span hlmSmall class="text-sm font-medium group-hover:text-primary transition-colors leading-none">Future of AI in Search</span>
+                     <span hlmMuted class="text-[11px] text-muted-foreground uppercase opacity-70 leading-none">Trending • 2 days ago</span>
+                  </div>
+               </div>
+            }
+         </div>
+      </aside>
+
+    </div>
+  </main>
+
+  <!-- Global Footer -->
+  <app-footer customClass="mt-auto" />
+</div>

@@ -1,0 +1,64 @@
+<div class="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-foreground/10">
+  
+  <!-- Header -->
+  <header class="border-b border-border bg-background/50 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-6 h-16 flex items-center gap-4">
+      <button (click)="goBack()" class="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground">
+        <ng-icon name="lucideArrowLeft" class="size-5"></ng-icon>
+      </button>
+      <h1 hlmH1 class="text-xl font-bold tracking-tight border-none lg:text-xl m-0">Top Stories</h1>
+    </div>
+  </header>
+
+  <!-- Search Section -->
+  <div class="flex flex-col items-center pt-8 px-4 max-w-4xl mx-auto">
+    <div class="w-full group relative">
+      <div class="flex items-center w-full h-[52px] rounded-full pl-5 pr-4 gap-3 bg-muted/50 border border-border shadow-sm hover:shadow-md focus-within:shadow-md focus-within:bg-background px-4">
+        <ng-icon hlmIcon name="lucideSearch" class="size-5 text-muted-foreground shrink-0"></ng-icon>
+        <input hlmInput
+               [ngModel]="searchQuery()"
+               (ngModelChange)="searchQuery.set($event)"
+               (keyup.enter)="onSearch()"
+               placeholder="Search..."
+               class="flex-1 bg-transparent border-none ring-0 focus-visible:ring-0 px-2 text-[16px] text-foreground placeholder:text-muted-foreground/60 overflow-hidden" />
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-4xl mx-auto px-6 py-12 flex-1">
+    <div class="space-y-8">
+      @for (item of newsList(); track item.id) {
+         <div (click)="goToArticle(item)" class="group cursor-pointer p-6 rounded-2xl border border-border bg-card/30 hover:bg-card/50 transition-all">
+            <div class="flex items-center gap-2 text-[12px] text-muted-foreground/80 mb-3">
+               <span class="font-bold text-foreground uppercase tracking-wider">{{ item.source }}</span>
+               <span>•</span>
+               @if (item.created_at) {
+                 <span>{{ item.created_at | date:'dd MMM, HH:mm' }}</span>
+               } @else {
+                 <span>{{ item.time }}</span>
+               }
+            </div>
+            <h2 hlmH2 class="text-lg md:text-xl font-bold leading-tight group-hover:opacity-80 transition-opacity text-foreground border-none m-0">
+               {{ item.title }}
+            </h2>
+            
+            <div class="flex items-center gap-6 mt-6">
+               <div class="flex items-center gap-2 text-[13px] text-muted-foreground/60">
+                  <span class="opacity-60">{{ item.likes }} likes</span>
+               </div>
+               <div class="flex items-center gap-2 text-[13px] text-muted-foreground/60">
+                  <span class="opacity-60">{{ item.comments }} comments</span>
+               </div>
+            </div>
+         </div>
+      } @empty {
+         <div class="py-20 text-center space-y-4 opacity-50">
+            <ng-icon name="lucideSun" class="size-12 mx-auto text-muted-foreground"></ng-icon>
+            <p hlmLead class="text-muted-foreground">No news articles found at the moment.</p>
+         </div>
+      }
+    </div>
+  </main>
+
+  <app-footer />
+</div>

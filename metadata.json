@@ -1,9 +1,7 @@
 {
-  "name": "Gemini AI Studio",
-  "description": "A polished clone of the Google AI Studio mobile interface, featuring an interactive prompt area and Gemini AI integration.",
-  "requestFramePermissions": [
-    "microphone"
-  ],
+  "name": "No Name Defined",
+  "description": "An autonomous agent orchestration platform for futuristic news and content creation.",
+  "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]

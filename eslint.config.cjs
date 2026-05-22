@@ -19,7 +19,7 @@ module.exports = defineConfig([
         'error',
         {
           type: 'attribute',
-          prefix: 'app',
+          prefix: ['app', 'hlm'],
           style: 'camelCase',
         },
       ],
@@ -27,10 +27,20 @@ module.exports = defineConfig([
         'error',
         {
           type: 'element',
-          prefix: 'app',
+          prefix: ['app', 'hlm'],
           style: 'kebab-case',
         },
       ],
+      '@angular-eslint/no-input-rename': 'off',
+    },
+  },
+  {
+    files: ['src/app/ui/**/*.ts'],
+    rules: {
+      '@angular-eslint/directive-selector': 'off',
+      '@angular-eslint/component-selector': 'off',
+      '@angular-eslint/no-input-rename': 'off',
+      '@typescript-eslint/array-type': 'off',
     },
   },
   {
@@ -39,6 +49,9 @@ module.exports = defineConfig([
       angular.configs.templateRecommended,
       angular.configs.templateAccessibility,
     ],
-    rules: {},
+    rules: {
+      '@angular-eslint/template/click-events-have-key-events': 'off',
+      '@angular-eslint/template/interactive-supports-focus': 'off',
+    },
   }
 ]);

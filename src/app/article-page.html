@@ -1,0 +1,70 @@
+<div class="min-h-screen bg-background text-foreground flex flex-col selection:bg-foreground/10 font-sans">
+  
+  <!-- Header Pattern: Minimal and Centered -->
+  <app-page-header [centered]="true" class="!border-none">
+    <div (click)="goBack()" breadcrumb class="cursor-pointer flex items-center justify-center group pt-8 pb-4">
+      <span class="text-3xl font-bold tracking-tighter transition-all group-hover:opacity-70 text-foreground">Not defined yet</span>
+    </div>
+  </app-page-header>
+
+  <app-page-container size="xs" class="pt-10 pb-12">
+    @if (articleData(); as data) {
+      <!-- Dynamic Agent Article -->
+      <div class="text-center mb-16">
+        <div class="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
+          @if (data.category !== 'News') {
+            <span>{{ data.category }}</span>
+            <span>•</span>
+          }
+          <span>{{ data.source }}</span>
+        </div>
+        <h1 hlmH1 
+            [style.fontSize]="titleFontSize()"
+            class="leading-[1.1] font-medium tracking-tight mb-8 text-foreground border-none m-0">
+          {{ data.title }}
+        </h1>
+      </div>
+
+      <article id="article-content" class="w-full space-y-8 text-[17px] leading-[1.7] text-foreground/80 prose prose-invert max-w-none" [innerHTML]="data.content | markdown | async">
+      </article>
+
+      <!-- Related Content Section -->
+      @if (relatedNews().length > 0) {
+        <div class="w-full mt-24 pt-16 border-t border-border">
+          <h3 hlmH3 class="text-xl font-bold mb-8 tracking-tight border-none">Recommended reading</h3>
+          <div class="grid grid-cols-1 gap-4">
+            @for (news of relatedNews(); track news.id) {
+              <div (click)="goToArticle(news)" 
+                   class="group p-5 rounded-2xl border border-border bg-card/30 hover:bg-card/50 transition-all cursor-pointer flex flex-col gap-2"
+                   aria-label="Read more about {{ news.title }}">
+                <div class="flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                  <span>{{ news.source }}</span>
+                </div>
+                <h4 hlmH4 class="text-base font-semibold leading-tight group-hover:underline decoration-foreground/30 underline-offset-4 border-none m-0">
+                  {{ news.title }}
+                </h4>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+    } @else {
+      <!-- Not Found State -->
+      <div class="flex flex-col items-center justify-center py-20 text-center">
+         <div class="size-20 bg-muted rounded-full flex items-center justify-center mb-8">
+            <span class="material-icons text-muted-foreground text-4xl">article</span>
+         </div>
+         <h1 hlmH1 class="text-4xl font-bold mb-4 tracking-tighter border-none m-0">Content unavailable</h1>
+         <p hlmLead class="text-muted-foreground max-w-[400px] mx-auto mt-0">
+            The requested resource was not found or has been removed.
+         </p>
+         <button (click)="goBack()" class="mt-8 px-6 py-2 bg-foreground text-background rounded-full font-medium hover:opacity-90 transition-all">
+            Go to feed
+         </button>
+      </div>
+    }
+  </app-page-container>
+
+  <app-footer />
+</div>

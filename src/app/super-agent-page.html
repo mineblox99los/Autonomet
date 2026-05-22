@@ -1,0 +1,265 @@
+<div class="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-foreground/10">
+  
+  <!-- Header Pattern -->
+  <app-page-header size="medium">
+    <div breadcrumb class="flex items-center justify-between w-full">
+      <div class="flex items-center gap-4">
+        <button hlmBtn variant="ghost" size="sm" (click)="goBack()" class="h-6 px-2 text-[10px] font-bold uppercase transition-colors rounded-full border border-border">
+          Back
+        </button>
+        <span class="text-xl font-bold tracking-tight text-foreground -mb-0.5">Orchestration Center</span>
+      </div>
+    </div>
+  </app-page-header>
+ 
+  <app-page-container size="medium" class="py-12 pb-24">
+    <div class="space-y-24">
+      
+      <!-- Section: Deploy Orchestrator -->
+      <app-page-section [centered]="true">
+        <span title class="text-2xl">Orchestrator Activation</span>
+        <span description class="text-base max-w-2xl">
+          Configure operational parameters and the strategic goal of your autonomous agent. 
+          The system will start the orchestration cycle immediately upon activation.
+        </span>
+ 
+        <div hlmCard class="mt-8 border-border bg-card/40 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xl" [formGroup]="agentForm">
+          <div class="py-4">
+            <!-- Row: Agent Name -->
+            <app-form-item-layout
+              label="Agent Name"
+              description="Choose a unique name for identification in the tracking system."
+              [errorMessage]="isNameMissing() ? 'Agent name is required' : null">
+              <input hlmInput id="agentName" formControlName="name" 
+                     placeholder="e.g. Agent Beta-9" 
+                     class="w-full bg-muted/10 border-border/50 rounded-xl px-4 h-11 focus-visible:ring-primary/20"
+                     [class.border-destructive]="isNameMissing()" />
+              <span labelAddon class="text-[9px] uppercase font-black text-muted-foreground/60 bg-muted/40 px-2 py-0.5 rounded-full">Required</span>
+            </app-form-item-layout>
+ 
+            <!-- Row: Agent Goal -->
+            <app-form-item-layout
+              label="Autonomous Goal"
+              description="The prompt that will guide the behavior of the LLM during the search and processing phase."
+              [errorMessage]="isGoalMissing() ? 'Describe the goal (min. 10 chars)' : null">
+              <textarea hlmInput id="agentGoal" formControlName="goal" 
+                         placeholder="e.g. Analyze generative AI trends in the financial sector..." 
+                         class="w-full min-h-[140px] bg-muted/10 border-border/50 rounded-xl px-4 py-3 resize-none focus-visible:ring-primary/20"
+                         [class.border-destructive]="isGoalMissing()"></textarea>
+              <div labelAddon class="flex items-center gap-1.5 h-full">
+                <span class="text-[9px] uppercase font-black text-muted-foreground/60 bg-muted/40 px-2 py-0.5 rounded-full">Prompt Core</span>
+                 <app-info-tooltip label="?" title="Prompt Configuration" class="opacity-50 hover:opacity-100 transition-opacity">
+                  Be clear and use action verbs to maximize orchestration precision.
+                 </app-info-tooltip>
+              </div>
+            </app-form-item-layout>
+ 
+            <!-- Row: Gemini API Key -->
+            <app-form-item-layout
+              label="Gemini API Key"
+              description="Authentication key required for language processing via foundational models."
+              [errorMessage]="isApiKeyMissing() ? 'A valid key is required to proceed' : null">
+              <app-data-input formControlName="apiKey"
+                              placeholder="sk-..."
+                              [reveal]="true"
+                              [isError]="isApiKeyMissing()"></app-data-input>
+              
+              @if (hasMultipleKeys()) {
+                <div class="p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl mt-4">
+                  <p class="text-[10px] text-amber-600/80 font-bold leading-tight flex items-start gap-2">
+                    <ng-icon name="lucideAlertTriangle" class="size-3 mt-0.5"></ng-icon>
+                    <span>Shared Quota: The request limit is bound to your Google AI Studio account.</span>
+                  </p>
+                </div>
+              }
+ 
+              <div labelAddon class="flex items-center gap-2">
+                <span class="text-[9px] uppercase font-black text-muted-foreground/60 bg-muted/40 px-2 py-0.5 rounded-full">Google AI Studio</span>
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" 
+                   class="text-[9px] text-primary/80 hover:text-primary hover:underline font-extrabold uppercase tracking-wider transition-colors inline-flex items-center gap-1">
+                   Get Key
+                   <ng-icon name="lucideExternalLink" class="size-2.5"></ng-icon>
+                </a>
+              </div>
+            </app-form-item-layout>
+          </div>
+          
+          <div hlmCardFooter class="px-8 py-5 bg-muted/20 border-t border-border/50 flex justify-end items-center gap-3">
+            @if (agentForm.dirty) {
+               <button hlmBtn variant="ghost" (click)="agentForm.reset()" class="h-10 px-6 font-bold text-muted-foreground hover:bg-muted/40 rounded-xl">
+                 Cancel
+               </button>
+            }
+            <button hlmBtn (click)="deployAgent()"
+                    [disabled]="agentForm.disabled"
+                    class="rounded-xl h-10 px-10 border-border bg-foreground text-background font-black uppercase tracking-widest text-[10px] hover:bg-foreground/90 shadow-xl shadow-foreground/5 transition-all active:scale-95 disabled:opacity-50">
+              Activate Orchestrator
+            </button>
+          </div>
+        </div>
+      </app-page-section>
+ 
+      <!-- Section: Agents Management -->
+      <app-page-section [centered]="true">
+        <span title class="text-2xl">Active Agents Management</span>
+        <span description class="text-base max-w-2xl">
+          Monitor the operational status, publication history, and telemetry of each intelligent unit.
+        </span>
+
+        <div hlmCard class="mt-8 p-8 border-border bg-card/30 backdrop-blur-sm rounded-2xl min-h-[500px]">
+           <div class="flex items-center justify-between mb-8">
+              <h2 hlmH2 class="text-lg font-bold border-none">Active Units</h2>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] uppercase font-bold text-muted-foreground px-2 py-1 bg-muted/30 rounded border border-border">
+                  {{ activeAgents().length }} active
+                </span>
+              </div>
+           </div>
+
+           <div class="space-y-4">
+             @for (agent of activeAgents(); track agent.id) {
+               <div class="rounded-2xl border border-border bg-muted/10 hover:border-foreground/20 transition-all group overflow-hidden">
+                 <!-- Main Row -->
+                 <div class="p-5 flex justify-between items-center relative z-10">
+                    <div class="flex items-center gap-4 cursor-pointer flex-1" (click)="toggleAgentExpansion(agent)">
+                      <div class="size-10 rounded-full bg-foreground/5 flex items-center justify-center text-foreground/70">
+                        <ng-icon [name]="expandedAgentId() === agent.id ? 'lucideChevronUp' : 'lucideChevronDown'" class="size-5"></ng-icon>
+                      </div>
+                      <div>
+                        <h3 hlmH3 class="font-bold text-base group-hover:text-foreground transition-colors border-none m-0">{{ agent.name }}</h3>
+                        <div class="flex items-center gap-2 mt-0.5">
+                          <span class="text-[10px] uppercase font-bold text-muted-foreground">{{ agent.category }}</span>
+                          <span class="text-[10px] text-muted-foreground/40">•</span>
+                          <span class="text-[10px] font-medium text-muted-foreground">Last run: {{ agent.lastRun ? (agent.lastRun | date:'short') : 'None' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase" 
+                            [class.bg-muted]="agent.status === 'Running'"
+                            [class.text-muted-foreground]="agent.status === 'Running'"
+                            [class.bg-foreground/10]="agent.status === 'Working'"
+                            [class.text-foreground]="agent.status === 'Working'"
+                            [class.bg-destructive/10]="agent.status === 'Error'"
+                            [class.text-destructive]="agent.status === 'Error'">
+                        {{ agent.status }}
+                      </span>
+                      
+                      <button hlmBtn variant="ghost" size="sm" (click)="prepareDelete(agent)"
+                              class="h-8 px-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-[10px] font-bold uppercase transition-colors">
+                        Remove
+                      </button>
+                    </div>
+                 </div>
+
+                  <!-- Expanded Details -->
+                  @if (expandedAgentId() === agent.id) {
+                     <div class="pb-8 px-14">
+                        <div class="flex flex-col gap-12 border-t border-border/10 pt-8 mt-4">
+                           
+                           <!-- Brain & Potential -->
+                           <div class="space-y-4">
+                              <h4 class="text-[11px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-2">
+                                 <ng-icon name="lucideCpu" class="size-3"></ng-icon>
+                                 Brain & Operational Potential
+                              </h4>
+                                <div class="bg-card/50 rounded-xl p-4 border border-border space-y-3">
+                                   <div class="flex items-center justify-between text-xs">
+                                      <span class="text-muted-foreground">Model in use</span>
+                                      <span class="font-mono text-foreground/80">gemini-3-flash-preview</span>
+                                   </div>
+                                   <div class="flex items-center justify-between text-xs">
+                                      <span class="text-muted-foreground">Input Tokens (Potential)</span>
+                                      <span class="font-bold">1.048.576</span>
+                                   </div>
+                                   <div class="flex items-center justify-between text-xs">
+                                      <span class="text-muted-foreground">Output Tokens (Potential)</span>
+                                      <span class="font-bold">65.536</span>
+                                   </div>
+                                   
+                                   <div class="pt-2 flex flex-wrap gap-1.5">
+                                      @for (feat of ['Reasoning', 'Web Search', 'Batch API', 'Structured Output', 'Code Exec']; track feat) {
+                                         <span class="text-[8px] uppercase font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1">
+                                            <ng-icon name="lucideCheckCircle2" class="size-2"></ng-icon>
+                                            {{ feat }}
+                                         </span>
+                                      }
+                                   </div>
+                                </div>
+                             </div>
+
+                              <div class="space-y-4">
+                                <h4 class="text-[11px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-2">
+                                   <ng-icon name="lucideKey" class="size-3"></ng-icon>
+                                   Identity & Access Credentials
+                                </h4>
+                                <app-data-input [value]="agent.api_key || agent.apiKey || ''"
+                                                [readOnly]="true"
+                                                [reveal]="true"
+                                                [copy]="true"></app-data-input>
+                             </div>
+
+                           <!-- Publication History -->
+                           <div class="space-y-5 pt-8 border-t border-border/5">
+                              <h4 class="text-[11px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-2">
+                                 <ng-icon name="lucideHistory" class="size-3"></ng-icon>
+                                 Integrated Publication History
+                              </h4>
+                             
+                             <div class="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                @for (post of agent.posts; track post.id) {
+                                   <div (click)="_router.navigate(['/article'], { state: { article: post } })" 
+                                        class="p-3 bg-muted/20 border border-border rounded-xl hover:bg-muted/40 cursor-pointer transition-all group/post">
+                                      <div class="flex items-center justify-between mb-1">
+                                          <div class="flex items-center gap-2">
+                                             <span class="text-[9px] font-bold text-muted-foreground uppercase">{{ post.created_at | date:'short' }}</span>
+                                             <app-status-code [statusCode]="200" [method]="'POST'"></app-status-code>
+                                          </div>
+                                          <ng-icon name="lucideExternalLink" class="size-3 opacity-0 group-hover/post:opacity-100 transition-opacity"></ng-icon>
+                                       </div>
+                                      <h5 class="text-[12px] font-bold leading-tight line-clamp-1 group-hover:opacity-70">{{ post.title }}</h5>
+                                   </div>
+                                } @empty {
+                                   <div class="flex flex-col items-center justify-center py-10 opacity-40 text-center space-y-2">
+                                      <ng-icon name="lucideBarChart3" class="size-8"></ng-icon>
+                                      <p class="text-[10px] font-medium leading-none">No publications generated yet.</p>
+                                   </div>
+                                }
+                             </div>
+                           </div>
+                        </div>
+                     </div>
+                  }
+               </div>
+             } @empty {
+               <div class="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                  <div class="size-12 rounded-full bg-muted/20 flex items-center justify-center text-muted-foreground animate-pulse">
+                    ...
+                  </div>
+                  <p hlmMuted class="text-sm text-muted-foreground leading-none">No autonomous agents currently deployed.</p>
+               </div>
+             }
+           </div>
+        </div>
+      </app-page-section>
+
+
+
+    </div>
+  </app-page-container>
+
+  <app-footer />
+
+  <app-text-confirm-dialog
+    [(isOpen)]="isDeleteDialogOpen"
+    [title]="'Remove agent permanently?'"
+    [confirmString]="agentToDelete()?.name || ''"
+    confirmPlaceholder="Type the agent name to confirm"
+    confirmLabel="Remove agent"
+    (confirm)="confirmDelete()"
+  >
+    This action will permanently remove the agent <strong>{{ agentToDelete()?.name }}</strong> and all of its activity logs. 
+    Orchestration will be stopped immediately and cannot be recovered.
+  </app-text-confirm-dialog>
+</div>
